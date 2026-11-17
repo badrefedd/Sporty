@@ -98,14 +98,22 @@ function daySheet(k){
   const ses=S.sessions.filter(s=>s.date===k).sort((a,b)=>(a.ts||0)-(b.ts||0));
   const w=S.weights.find(x=>x.date===k),act=dayData(k)||{};
   const future=k>dkey();
-  const prevus=itemsDuJour(k).filter(x=>x.src!=='extra'&&x.etat!=='fait'&&x.modele!=='five');
-  const prevuHTML=prevus.map(it=>{const info=infoModele(it.modele);return `<div class="prevu">
-    <div class="row">${badgeHTML(info,it.etat==='passe'?'passe':'out')}<b style="flex:1">${esc(info.nom)}</b><span class="small muted">${it.src==='date'?'prévue ce jour':'chaque semaine'}</span></div>
-    <div class="row" style="flex-wrap:wrap">
-      <button class="btn sm primary" data-act="start" data-type="${it.modele}" ${it.planId?`data-plan="${it.planId}"`:''}>${I.play} Démarrer</button>
-      ${it.src==='date'?`<button class="btn sm ghost" data-act="pmove" data-plan="${it.planId}">Déplacer</button><button class="btn sm ghost rm" data-act="pdel" data-plan="${it.planId}">Retirer de ce jour</button>`:''}
+  const prevus=itemsDuJour(k).filter(x=>x.src!=='extra'&&x.etat!=='fait');
+  const prevuHTML=prevus.map(it=>{const info=infoModele(it.modele),key=cleItem(it),rec=!it.planId,ws=weekStart(pkey(k));
+    const jourOrig=it.origine?DAYS_LONG[(pkey(it.origine).getDay()+6)%7]:'';
+    return `<div class="prevu">
+    <div class="row">${badgeHTML(info,it.etat==='passe'?'passe':'out')}<b style="flex:1">${esc(info.nom)}</b><span class="small muted">${!rec?'placée ce jour':it.deplacee?`déplacée (prévue ${jourOrig})`:'chaque semaine'}</span></div>
+    <div class="prevu-act">
+      ${it.modele==='five'?`<button class="btn sm primary" data-act="five">${I.play} Noter</button>`:`<button class="btn sm primary" data-act="start" data-type="${it.modele}" ${it.planId?`data-plan="${it.planId}"`:''}>${I.play} Démarrer</button>`}
+      <button class="btn sm ghost" data-act="itpanel" data-it="${key}">Déplacer à un autre jour</button>
+      <button class="btn sm ghost rm" data-act="itdel" data-it="${key}">Retirer de ce jour</button>
+      ${rec?`<button class="btn sm ghost" data-act="habituels" data-m="${it.modele}">Changer mes jours habituels</button>`:''}
     </div>
-    ${it.src==='date'?`<div class="row pmove" id="pm-${it.planId}" hidden><input class="input" type="date" id="pmd-${it.planId}" value="${k}" style="flex:1;height:44px"><button class="btn sm primary" data-act="pmoveok" data-plan="${it.planId}">OK</button></div>`:''}
+    <div class="stack itpanel" id="pan-${esc(key)}" style="gap:8px" hidden>
+      <div class="jours">${Array.from({length:7},(_,i)=>{const d=dkey(addDays(ws,i));return `<button class="chip ${d===k?'on':''}" data-act="itmove" data-it="${key}" data-to="${d}" ${d===k?'disabled':''}>${DAYS[i]} ${pkey(d).getDate()}</button>`;}).join('')}</div>
+      <div class="row"><span class="small" style="font-weight:700">Autre date</span><input class="input" type="date" id="pd-${esc(key)}" value="${k}" style="flex:1;height:44px"><button class="btn sm primary" data-act="itmoveok" data-it="${key}">OK</button></div>
+    </div>
+    ${rec?'<p class="small muted" style="margin:0">Déplacer ou retirer ne concerne que cette semaine : tes jours habituels ne changent pas.</p>':''}
   </div>`;}).join('');
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Journée</div><h2 class="title-l" style="text-transform:capitalize">${fmtDate(k)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     ${ses.map(s=>{const info=infoSeance(s);return `<div class="card" style="box-shadow:none;padding:12px"><div class="row">${badgeHTML(info,'fait')}<b>${esc(info.nom)}</b><span class="small muted">${s.type==='five'?(s.min||60)+' min':(s.dur||'?')+' min'}</span></div>
@@ -119,6 +127,12 @@ function daySheet(k){
       <div class="row"><label class="fld" style="flex:1"><input id="dsteps" inputmode="numeric" placeholder="0" value="${act.steps!=null?act.steps:''}" aria-label="Nombre de pas"><span>pas</span></label>
       <label class="fld" style="flex:1"><input id="dkcal" inputmode="numeric" placeholder="0" value="${act.kcal!=null?act.kcal:''}" aria-label="Kcal actives"><span>kcal</span></label></div>
       <button class="btn primary block" data-act="saveday" data-date="${k}">Enregistrer l'activité</button></div>`}`);
+}
+/* Identifiant d'une séance prévue dans l'écran : « p:<plan> » ou « r:<séance>|<date d'origine> ». */
+const cleItem=it=>it.planId?'p:'+it.planId:'r:'+it.modele+'|'+it.origine;
+function itemDeCle(c){
+  if(c.startsWith('p:'))return {planId:c.slice(2)};
+  const [modele,origine]=c.slice(2).split('|');return {modele,origine};
 }
 function prevoirSheet(k){
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Prévoir une séance</div><h2 class="title-l" style="text-transform:capitalize">${fmtDate(k)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>

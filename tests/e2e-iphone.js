@@ -73,11 +73,51 @@ etape('Prévoir une séance un jour, la déplacer, la retirer',async p=>{
   await p.click(`.day[data-date="${demain}"]`);await p.click('[data-act="prevoir"]');await p.click('[data-act="prevoirpick"][data-m="B"]');
   await p.waitForSelector('.prevu');
   const plan=await p.evaluate(()=>S.plans[0]);assert.equal(plan.date,demain);
-  await p.click(`[data-act="pmove"][data-plan="${plan.id}"]`);await p.fill(`#pmd-${plan.id}`,apres);await p.click(`[data-act="pmoveok"][data-plan="${plan.id}"]`);
+  await p.click(`[data-act="itpanel"][data-it="p:${plan.id}"]`);await p.click(`[data-act="itmove"][data-it="p:${plan.id}"][data-to="${apres}"]`);
   assert.equal(await p.evaluate(()=>S.plans[0].date),apres);
-  await p.click(`[data-act="pdel"][data-plan="${plan.id}"]`);
+  await p.click(`[data-act="itdel"][data-it="p:${plan.id}"]`);
   assert.equal(await p.evaluate(()=>S.plans.length),0);
   await p.click('#sheet [data-act="close"]');
+});
+etape('Semaine : A pas faite lundi → « La placer aujourd\'hui »',async p=>{
+  // date fixée au mardi 17 novembre 2026 (plan lundi + mercredi)
+  await p.goto(U+'#semaine');await p.waitForSelector('.week');
+  assert.match(await p.textContent('.nudge.manquee'),/Séance A pas faite lundi/);
+  await p.click('.nudge.manquee [data-act="itmove"]');
+  assert.equal(await p.$('.nudge.manquee'),null);
+  assert.match(await p.textContent('.hero .eyebrow'),/prévue aujourd'hui/);
+  assert.ok(await p.$('[data-act="semdefaut"]'),'bouton « Remettre la semaine par défaut » visible');
+});
+etape('Semaine : déplacer A à jeudi, puis retirer B de mercredi, depuis la journée',async p=>{
+  await p.click('.day[data-date="2026-11-17"]');await p.waitForSelector('.prevu');
+  assert.match(await p.textContent('.prevu'),/déplacée \(prévue lundi\)/);
+  assert.match(await p.textContent('#sheet'),/ne concerne que cette semaine/);
+  await p.click('.prevu [data-act="itpanel"]');await p.click('.itpanel:not([hidden]) [data-act="itmove"][data-to="2026-11-19"]');
+  await p.waitForTimeout(150);await p.click('#sheet [data-act="close"]');
+  assert.match(await p.textContent('.hero .eyebrow'),/prévue jeudi/);
+  const jeu=await p.$$eval('.day[data-date="2026-11-19"] .badge',a=>a.map(x=>x.textContent+':'+x.className));
+  assert.ok(jeu.some(x=>x.startsWith('A:')&&/out/.test(x)),'A en contour jeudi : '+jeu);
+  assert.equal(await p.$$eval('.day[data-date="2026-11-16"] .badge',a=>a.map(x=>x.textContent).join()),'–','lundi n\'affiche plus rien');
+  await p.click('.day[data-date="2026-11-18"]');await p.waitForSelector('.prevu');
+  await p.click('.prevu [data-act="itdel"]');await p.waitForTimeout(150);await p.click('#sheet [data-act="close"]');
+  assert.ok(!(await p.$$eval('.day[data-date="2026-11-18"] .badge',a=>a.map(x=>x.textContent))).includes('B'));
+  assert.match(await p.textContent('#view'),/Objectif de la semaine : 0\/1/);
+});
+etape('Mois : mêmes actions, puis « Remettre la semaine par défaut »',async p=>{
+  await p.goto(U+'#mois');await p.waitForSelector('.cal');
+  await p.click('.cal-cell[data-date="2026-11-19"]');await p.waitForSelector('.prevu');
+  await p.click('.prevu [data-act="itpanel"]');await p.click('.itpanel:not([hidden]) [data-act="itmove"][data-to="2026-11-21"]');
+  await p.waitForTimeout(150);await p.click('#sheet [data-act="close"]');
+  assert.match(await p.textContent('.cal-cell[data-date="2026-11-21"]'),/A/);
+  await p.goto(U+'#semaine');await p.click('[data-act="semdefaut"]');await p.click('[data-act="confirmok"]');await p.waitForTimeout(150);
+  assert.equal(await p.$('[data-act="semdefaut"]'),null);
+  assert.equal(await p.evaluate(()=>S.exceptions.length),0);
+  assert.match(await p.textContent('.nudge.manquee'),/Séance A pas faite lundi/);
+});
+etape('« Changer mes jours habituels » sur A → Mes jours de salle',async p=>{
+  await p.click('.day[data-date="2026-11-18"]');await p.waitForSelector('.prevu');
+  await p.click('.prevu [data-act="habituels"]');await p.waitForSelector('#jours-salle');
+  assert.equal(await p.evaluate(()=>location.hash),'#reglages');
 });
 etape('Coller un code (texte autour, guillemets typographiques, exercice introuvable) puis « Enregistrer et placer »',async p=>{
   await p.goto(U+'#seance');await p.click('[data-act="coller"]');await p.waitForSelector('#imptxt');
@@ -118,6 +158,7 @@ etape('Supprimer une séance perso (avec confirmation) ; l\'historique reste',as
   await new Promise(r=>serveur.listen(PORT,r));
   const b=await chromium.launch();
   const c=await b.newContext({...devices['iPhone 13'],permissions:['clipboard-read','clipboard-write']});
+  await c.clock.setFixedTime(new Date('2026-11-17T10:00:00'));
   const p=await c.newPage();const erreurs=[];
   p.on('pageerror',e=>erreurs.push(e.message));p.on('console',m=>{if(m.type()==='error')erreurs.push(m.text());});
   let ok=0;

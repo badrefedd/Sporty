@@ -116,6 +116,7 @@ function supprimerModele(id){
   /* Les dates prévues de ce modèle disparaissent ; l'historique garde sa copie du nom et du badge. */
   const avant=(S.plans||[]).length;S.plans=(S.plans||[]).filter(p=>p.modele!==id);
   if(S.plans.length!==avant)Store.savePlans();
+  if((S.exceptions||[]).some(e=>e.modele===id)){S.exceptions=S.exceptions.filter(e=>e.modele!==id);Store.saveExceptions();}
   return {ok:true};
 }
 function reinitialiserAB(t){
@@ -192,14 +193,64 @@ function retirerPrevue(planId){
    src : semaine (A, B, Five de « Mes jours de salle »), jours (séance perso avec jours),
          date (séance placée à une date), extra (séance faite sans être prévue).
    etat : fait, prevu (à venir ou aujourd'hui), passe (date passée, pas faite). */
+/* ---------- Exceptions des séances récurrentes ----------
+   A, B, le Five et les séances perso avec des jours reviennent chaque semaine.
+   Pour une semaine précise, une occurrence peut être déplacée ou retirée sans toucher
+   aux jours habituels : S.exceptions = [{ id, modele, origine, action:'deplace'|'retire', vers? }]
+   origine = date où la séance était prévue normalement ; vers = nouvelle date. */
+function estRecurrente(modele,date){
+  const wd=(pkey(date).getDay()+6)%7+1;
+  const opt=WEEK_OPTS[S.settings.plan]||WEEK_OPTS['1'];
+  if(opt.days[wd]===modele)return 'semaine';
+  const m=modelesPerso().find(x=>x.id===modele);
+  return m&&(m.jours||[]).includes(wd)?'jours':null;
+}
+const exceptionDe=(modele,origine)=>(S.exceptions||[]).find(e=>e.modele===modele&&e.origine===origine)||null;
+function poserException(modele,origine,champs){
+  if(!estRecurrente(modele,origine))return {erreur:'Cette séance n\'est pas prévue ce jour-là.'};
+  const e=exceptionDe(modele,origine);
+  S.exceptions=(S.exceptions||[]).filter(x=>x!==e);
+  if(champs)S.exceptions.push(Object.assign({id:e?e.id:'x_'+uid(),modele,origine},champs));
+  Store.saveExceptions();return {ok:true};
+}
+/* Déplace une séance récurrente pour cette semaine seulement. Revenir à sa date d'origine efface l'exception. */
+function deplacerRecurrente(modele,origine,vers){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(vers||''))return {erreur:'Choisis une date.'};
+  return poserException(modele,origine,vers===origine?null:{action:'deplace',vers});
+}
+function retirerRecurrente(modele,origine){return poserException(modele,origine,{action:'retire'});}
+/* Exceptions qui touchent une semaine (prévue ou déplacée vers cette semaine). */
+function exceptionsSemaine(ws){return (S.exceptions||[]).filter(e=>inWeek(e.origine,ws)||(e.vers&&inWeek(e.vers,ws)));}
+function remettreSemaine(ws){
+  const ids=new Set(exceptionsSemaine(ws).map(e=>e.id));
+  S.exceptions=(S.exceptions||[]).filter(e=>!ids.has(e.id));Store.saveExceptions();return {ok:true};
+}
+/* Déplace n'importe quelle séance prévue (récurrente ou placée à une date). */
+function deplacerItem(it,vers){return it.planId?deplacerPrevue(it.planId,vers):deplacerRecurrente(it.modele,it.origine,vers);}
+function retirerItem(it){return it.planId?retirerPrevue(it.planId):retirerRecurrente(it.modele,it.origine);}
+
+/* Ce qui est prévu et fait pendant une semaine.
+   Renvoie une liste triée par date : { date, modele, src, origine?, deplacee?, planId?, ses?, etat }
+   src : semaine (A, B, Five de « Mes jours de salle »), jours (séance perso avec jours),
+         date (séance placée à une date), extra (séance faite sans être prévue).
+   etat : fait, prevu (à venir ou aujourd'hui), passe (date passée, pas faite). */
 function semaineItems(ws){
-  const today=dkey(),items=[];
+  const today=dkey(),items=[],base=[];
   const opt=WEEK_OPTS[S.settings.plan]||WEEK_OPTS['1'];
   for(let i=0;i<7;i++){
     const k=dkey(addDays(ws,i)),wd=i+1;
-    if(opt.days[wd])items.push({date:k,modele:opt.days[wd],src:'semaine'});
-    modelesPerso().forEach(m=>{if((m.jours||[]).includes(wd))items.push({date:k,modele:m.id,src:'jours'});});
+    if(opt.days[wd])base.push({origine:k,modele:opt.days[wd],src:'semaine'});
+    modelesPerso().forEach(m=>{if((m.jours||[]).includes(wd))base.push({origine:k,modele:m.id,src:'jours'});});
   }
+  /* séances d'une autre semaine déplacées vers celle-ci */
+  (S.exceptions||[]).forEach(e=>{const src=estRecurrente(e.modele,e.origine);if(e.action==='deplace'&&src&&inWeek(e.vers,ws)&&!inWeek(e.origine,ws))base.push({origine:e.origine,modele:e.modele,src});});
+  base.forEach(b=>{
+    const e=exceptionDe(b.modele,b.origine);
+    if(e&&e.action==='retire')return;
+    const date=e&&e.action==='deplace'?e.vers:b.origine;
+    if(!inWeek(date,ws))return;
+    items.push(Object.assign(b,{date,deplacee:date!==b.origine}));
+  });
   (S.plans||[]).forEach(p=>{if(inWeek(p.date,ws))items.push({date:p.date,modele:p.modele,src:'date',planId:p.id});});
   const ses=S.sessions.filter(s=>s.date&&inWeek(s.date,ws)).sort((a,b)=>(a.ts||0)-(b.ts||0));
   const pris=new Set();
@@ -211,6 +262,8 @@ function semaineItems(ws){
   items.forEach(it=>{it.etat=it.ses?'fait':it.date<today?'passe':'prevu';});
   return items.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
 }
+/* Séances prévues cette semaine, passées sans être faites (le Five à part). */
+function seancesManquees(ws){return semaineItems(ws).filter(x=>x.etat==='passe'&&x.src!=='extra'&&x.modele!=='five');}
 /* Objectif de la semaine : séances de salle prévues (A, B, perso avec jours, séances placées). */
 function objectifSemaine(ws){
   const it=semaineItems(ws).filter(x=>x.src!=='extra'&&x.modele!=='five');

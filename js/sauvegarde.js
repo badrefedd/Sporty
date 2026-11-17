@@ -8,7 +8,7 @@ const RAPPEL_JOURS=30;
 
 function nomFichierSauvegarde(){return `sporty-sauvegarde-${dkey()}.json`;}
 function contenuSauvegarde(){
-  return JSON.stringify({app:'sporty',version:4,exporte_le:new Date().toISOString(),seances:S.sessions,pesees:S.weights,activite:S.days,reglages:S.settings,modeles:S.modeles||[],prevues:S.plans||[]},null,1);
+  return JSON.stringify({app:'sporty',version:5,exporte_le:new Date().toISOString(),seances:S.sessions,pesees:S.weights,activite:S.days,reglages:S.settings,modeles:S.modeles||[],prevues:S.plans||[],exceptions:S.exceptions||[]},null,1);
 }
 function marquerSauvegarde(){S.meta.lastBackup=Date.now();delete S.meta.snooze;Store.saveMeta();}
 
@@ -41,7 +41,7 @@ function lireSauvegarde(txt){
   let o;
   try{o=JSON.parse(String(txt).replace(/^﻿/,'').trim());}catch(e){throw new Error('Ce fichier n\'est pas une sauvegarde Sporty lisible.');}
   if(!o||typeof o!=='object'||Array.isArray(o))throw new Error('Ce fichier n\'est pas une sauvegarde Sporty.');
-  const has=['seances','pesees','activite','reglages','modeles','prevues'].some(k=>k in o);
+  const has=['seances','pesees','activite','reglages','modeles','prevues','exceptions'].some(k=>k in o);
   if(!has)throw new Error('Ce fichier ne contient ni séances, ni pesées, ni activité.');
   const arr=x=>Array.isArray(x)?x:[];
   const seances=arr(o.seances).filter(s=>s&&typeof s==='object'&&s.type&&isDate(s.date)).map(s=>Object.assign({},s,{id:s.id?String(s.id):uid()}));
@@ -54,7 +54,9 @@ function lireSauvegarde(txt){
     desc:String(m.desc||''),tapis:m.tapis!==false,jours:arr(m.jours).map(Number).filter(d=>d>=1&&d<=7),
     ex:m.ex.filter(l=>l&&typeof l==='object'&&l.id).map(l=>Object.assign({},l,{id:String(l.id)}))}));
   const prevues=arr(o.prevues).filter(p=>p&&p.id&&isDate(p.date)&&p.modele).map(p=>({id:String(p.id),date:p.date,modele:String(p.modele)}));
-  return {seances,pesees,activite,reglages,modeles,prevues,date:o.exporte_le||null,version:o.version||2};
+  /* v5 : séances récurrentes déplacées ou retirées pour une semaine. */
+  const exceptions=arr(o.exceptions).filter(e=>e&&e.id&&e.modele&&isDate(e.origine)&&(e.action==='retire'||(e.action==='deplace'&&isDate(e.vers)))).map(e=>{const x={id:String(e.id),modele:String(e.modele),origine:e.origine,action:e.action};if(e.action==='deplace')x.vers=e.vers;return x;});
+  return {seances,pesees,activite,reglages,modeles,prevues,exceptions,date:o.exporte_le||null,version:o.version||2};
 }
 
 let importEnAttente=null;
@@ -83,6 +85,7 @@ function apercuImport(r){
       <li>${n(r.activite.length,'jour d\'activité','jours d\'activité')}</li>
       ${r.modeles.length?`<li>${n(r.modeles.length,'séance perso','séances perso')}</li>`:''}
       ${r.prevues.length?`<li>${n(r.prevues.length,'séance prévue à une date','séances prévues à une date')}</li>`:''}
+      ${r.exceptions.length?`<li>${n(r.exceptions.length,'changement de semaine (séance déplacée ou retirée)','changements de semaine (séances déplacées ou retirées)')}</li>`:''}
       <li>${r.reglages?'Tes réglages (thème, jours, objectif, alternatives, exercices perso)':'Pas de réglages'}</li>
     </ul>
     ${d&&!isNaN(d)?`<p class="small muted" style="margin:0">Sauvegarde du ${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}.</p>`:''}
@@ -106,15 +109,17 @@ function fusionnerSeancesPerso(r){
     S.modeles.push(m);
   }
   const pm=new Map((S.plans||[]).map(p=>[p.id,p]));r.prevues.forEach(p=>pm.set(p.id,p));S.plans=[...pm.values()];
+  /* une seule exception par séance et par date d'origine : celle du fichier l'emporte */
+  const cle=e=>e.modele+'|'+e.origine,em=new Map((S.exceptions||[]).map(e=>[cle(e),e]));r.exceptions.forEach(e=>em.set(cle(e),e));S.exceptions=[...em.values()];
 }
 async function appliquerImport(remplacer){
   const r=importEnAttente;if(!r)return;
-  const avant=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,modeles:S.modeles||[],plans:S.plans||[]});
+  const avant=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,modeles:S.modeles||[],plans:S.plans||[],exceptions:S.exceptions||[]});
   /* Appli encore vide (premier import) : on reprend aussi le thème, les jours et l'objectif du fichier. */
   const vide=!S.sessions.length&&!S.weights.length&&!S.days.length;
   if(remplacer||vide){
     S.sessions=r.seances;S.weights=r.pesees;S.days=r.activite;
-    if(remplacer){S.modeles=r.modeles;S.plans=r.prevues;}
+    if(remplacer){S.modeles=r.modeles;S.plans=r.prevues;S.exceptions=r.exceptions;}
     else fusionnerSeancesPerso(r);
     if(r.reglages)S.settings=Object.assign({theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},r.reglages);
   }else{

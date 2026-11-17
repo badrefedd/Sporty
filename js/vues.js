@@ -42,8 +42,9 @@ function viewSemaine(){
     const info=S.draft.info||infoModele(S.draft.type);
     hero=`<section class="card hero c-${info.couleur}"><div class="eyebrow">Séance en cours</div><h2>${esc(info.nom)}</h2><ul>${(S.draft.list||[]).map(id=>EX[id]?`<li>${esc(EX[id].name)}</li>`:'').join('')}</ul><a class="btn block" href="#seance">Reprendre la séance</a>${stripes()}</section>`;
   }else if(next){
-    const p=modeleAB(next),dayIdx=Object.keys(opt.days).find(k=>opt.days[k]===next);
-    hero=`<section class="card hero c-${p.couleur}"><div class="eyebrow">Prochaine séance${dayIdx?' · prévue '+DAYS_LONG[dayIdx-1]:''}</div><h2>${esc(p.nom)}</h2><div style="font-weight:600;opacity:.9">${esc(p.desc)} · environ ${dureeEstimee(p)} min</div><ul>${p.ex.map(l=>`<li>${esc(EX[l.id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
+    const p=modeleAB(next),itn=items.find(x=>x.modele===next&&x.etat==='prevu');
+    const quand=itn?(itn.date===today?' · prévue aujourd\'hui':' · prévue '+DAYS_LONG[(pkey(itn.date).getDay()+6)%7]):'';
+    hero=`<section class="card hero c-${p.couleur}"><div class="eyebrow">Prochaine séance${quand}</div><h2>${esc(p.nom)}</h2><div style="font-weight:600;opacity:.9">${esc(p.desc)} · environ ${dureeEstimee(p)} min</div><ul>${p.ex.map(l=>`<li>${esc(EX[l.id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
   }else{
     const reste=obj.total-obj.faites;
     if(reste>0)hero=`<section class="card hero done"><div class="eyebrow">Semaine</div><h2>A et B faites !</h2><div style="font-weight:600;opacity:.9">Encore ${reste} séance${reste>1?'s':''} prévue${reste>1?'s':''} cette semaine. Touche un jour pour la démarrer.</div>${stripes()}</section>`;
@@ -60,6 +61,8 @@ function viewSemaine(){
   <div><div class="eyebrow">Semaine du ${ws.getDate()} ${MONTHS[ws.getMonth()]}</div><h1 class="title-xl">Ton programme</h1></div>
   <div class="week" role="list" aria-label="Programme de la semaine">${strip}</div>
   <p class="small muted" style="margin:-6px 0 0">${obj.total?`<b>Objectif de la semaine : ${obj.faites}/${obj.total} séance${obj.total>1?'s':''}.</b> `:''}${esc(opt.label)} + Five le vendredi. Touche un jour pour prévoir une séance.</p>
+  ${exceptionsSemaine(ws).length?`<button class="btn sm ghost" data-act="semdefaut" style="align-self:flex-start">${I.undo} Remettre la semaine par défaut</button>`:''}
+  ${seancesManquees(ws).map(it=>{const info=infoModele(it.modele);return `<div class="nudge manquee">${badgeHTML(info,'passe')}<span>${esc(info.nom)} pas faite ${DAYS_LONG[(pkey(it.date).getDay()+6)%7]}</span><button class="link" data-act="itmove" data-it="${cleItem(it)}" data-to="${today}">La placer aujourd'hui</button></div>`;}).join('')}
   ${hero}
   ${!S.draft?`<div class="row">
     <button class="btn ghost" style="flex:1" data-act="start" data-type="${other}">${badgeHTML(infoModele(other))} Faire la ${other}</button>
@@ -388,7 +391,7 @@ function viewReglages(){
   <section class="card stack"><h2 class="title-m">Thème</h2>
     <div class="seg" role="radiogroup" aria-label="Thème">${[['light','Clair'],['dark','Sombre'],['auto','Auto']].map(([k,l])=>`<button role="radio" aria-checked="${t===k}" class="${t===k?'on':''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <p class="small muted" style="margin:0">Auto : clair de 7 h à 19 h, sombre le soir, pour tes séances de 19 h à 20 h.</p></section>
-  <section class="card stack"><h2 class="title-m">Mes jours de salle</h2>
+  <section class="card stack" id="jours-salle"><h2 class="title-m">Mes jours de salle</h2>
     ${Object.entries(WEEK_OPTS).map(([k,o])=>`<button class="opt ${plan===k?'on':''}" data-act="plan" data-v="${k}" role="radio" aria-checked="${plan===k}"><span class="dot"></span><span><b>${o.label}</b> + Five le vendredi<br><span class="small muted">${esc(o.note)}</span></span></button>`).join('')}
   </section>
   <section class="card stack"><h2 class="title-m">Objectif de poids</h2>

@@ -11,7 +11,7 @@
    ===================================================================== */
 
 /* ---------- État ---------- */
-const S={settings:{theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},sessions:[],weights:[],days:[],draft:null,meta:{},modeles:[],plans:[],route:'semaine',histEx:null,openHist:null,bankQ:'',bankG:'all',cal:null,semVue:'semaine'};
+const S={settings:{theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},sessions:[],weights:[],days:[],draft:null,meta:{},modeles:[],plans:[],exceptions:[],route:'semaine',histEx:null,openHist:null,bankQ:'',bankG:'all',cal:null,semVue:'semaine'};
 
 /* Collections : nom → champ servant de clé. */
 const COLLECTIONS={sessions:'id',weights:'date',days:'date'};
@@ -44,7 +44,7 @@ const MoteurIDB={
     const out={};
     await this.tx(Object.keys(COLLECTIONS).concat('kv'),'readonly',t=>{
       for(const n of Object.keys(COLLECTIONS)){const r=t.objectStore(n).getAll();r.onsuccess=()=>{out[n]=r.result;};}
-      for(const k of ['settings','draft','meta','modeles','plans']){const r=t.objectStore('kv').get(k);r.onsuccess=()=>{out[k]=r.result;};}
+      for(const k of ['settings','draft','meta','modeles','plans','exceptions']){const r=t.objectStore('kv').get(k);r.onsuccess=()=>{out[k]=r.result;};}
     });
     return out;
   },
@@ -61,6 +61,7 @@ const MoteurIDB={
       kv.put(d.meta||{},'meta');
       kv.put(d.modeles||[],'modeles');
       kv.put(d.plans||[],'plans');
+      kv.put(d.exceptions||[],'exceptions');
     });
   }
 };
@@ -70,7 +71,7 @@ const MoteurLS={
   nom:'localStorage',
   async ouvrir(){localStorage.setItem('sporty:test','1');localStorage.removeItem('sporty:test');},
   async charger(){const raw=localStorage.getItem('sporty:data');return raw?JSON.parse(raw):{};},
-  ecrire(){localStorage.setItem('sporty:data',JSON.stringify({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,draft:S.draft,meta:S.meta,modeles:S.modeles,plans:S.plans}));},
+  ecrire(){localStorage.setItem('sporty:data',JSON.stringify({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,draft:S.draft,meta:S.meta,modeles:S.modeles,plans:S.plans,exceptions:S.exceptions}));},
   async put(){this.ecrire();},async suppr(){this.ecrire();},async putKv(){this.ecrire();},
   async remplacer(){this.ecrire();}
 };
@@ -99,7 +100,7 @@ const Store={
     if(d.settings)Object.assign(S.settings,d.settings);
     S.sessions=d.sessions||[];S.weights=(d.weights||[]).filter(w=>typeof w.kg==='number');S.days=d.days||[];
     S.draft=d.draft&&d.draft.type?d.draft:null;S.meta=d.meta||{};
-    S.modeles=Array.isArray(d.modeles)?d.modeles:[];S.plans=Array.isArray(d.plans)?d.plans:[];
+    S.modeles=Array.isArray(d.modeles)?d.modeles:[];S.plans=Array.isArray(d.plans)?d.plans:[];S.exceptions=Array.isArray(d.exceptions)?d.exceptions:[];
   },
   q(key,fn){
     const prev=this.queues[key]||Promise.resolve();
@@ -125,12 +126,13 @@ const Store={
   saveDraft(){const v=S.draft?clone(S.draft):null;return this.q('draft',m=>m.putKv('draft',v));},
   saveModeles(){const v=clone(S.modeles||[]);return this.q('modeles',m=>m.putKv('modeles',v));},
   savePlans(){const v=clone(S.plans||[]);return this.q('plans',m=>m.putKv('plans',v));},
+  saveExceptions(){const v=clone(S.exceptions||[]);return this.q('exceptions',m=>m.putKv('exceptions',v));},
   saveMeta(){const v=clone(S.meta);return this.q('meta',m=>m.putKv('meta',v));},
   /* Réécrit tout l'état courant (après un import). Rejette en cas d'échec, pour que l'écran d'import le dise. */
   async toutEnregistrer(){
     if(!this.moteur)throw new Error('Stockage indisponible');
     await Promise.all(Object.values(this.queues));
-    const d=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,draft:S.draft,meta:S.meta,modeles:S.modeles||[],plans:S.plans||[]});
+    const d=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,draft:S.draft,meta:S.meta,modeles:S.modeles||[],plans:S.plans||[],exceptions:S.exceptions||[]});
     try{localStorage.setItem('sporty:theme',S.settings.theme);}catch(e){}
     await this.moteur.remplacer(d);
   }

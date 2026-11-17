@@ -153,9 +153,20 @@ document.addEventListener('click',e=>{
     /* séances prévues */
     case 'prevoir':prevoirSheet(el.dataset.date);break;
     case 'prevoirpick':{const r=prevoir(el.dataset.m,el.dataset.date);if(r.erreur){toast(r.erreur);return;}render();daySheet(el.dataset.date);toast(`${infoModele(el.dataset.m).nom} prévue le ${fmtDate(el.dataset.date)}`);break;}
-    case 'pmove':{const z=$('#pm-'+el.dataset.plan);if(z)z.hidden=!z.hidden;break;}
-    case 'pmoveok':{const date=$('#pmd-'+el.dataset.plan).value;const r=deplacerPrevue(el.dataset.plan,date);if(r.erreur){toast(r.erreur);return;}render();daySheet(date);toast(`Déplacée au ${fmtDate(date)}`);break;}
-    case 'pdel':{const p=(S.plans||[]).find(x=>x.id===el.dataset.plan);retirerPrevue(el.dataset.plan);render();if(p)daySheet(p.date);toast('Retirée de ce jour');break;}
+    case 'itpanel':{const z=document.getElementById('pan-'+el.dataset.it);if(z){z.hidden=!z.hidden;if(!z.hidden)z.scrollIntoView({block:'nearest'});}break;}
+    case 'itmove':case 'itmoveok':{
+      const it=itemDeCle(el.dataset.it),to=a==='itmove'?el.dataset.to:(document.getElementById('pd-'+el.dataset.it)||{}).value;
+      const r=deplacerItem(it,to);if(r.erreur){toast(r.erreur);return;}
+      const ouvert=!$('#modal').hidden;render();if(ouvert)daySheet(to);
+      toast(`${infoModele(it.modele||(S.plans.find(p=>p.id===it.planId)||{}).modele).nom} déplacée au ${fmtDate(to)}${it.planId?'':' (cette semaine seulement)'}`);break;}
+    case 'itdel':{const it=itemDeCle(el.dataset.it),p=it.planId?(S.plans||[]).find(x=>x.id===it.planId):null;
+      const date=p?p.date:(exceptionDe(it.modele,it.origine)||{}).vers||it.origine;
+      const r=retirerItem(it);if(r.erreur){toast(r.erreur);return;}
+      render();daySheet(date);toast(it.planId?'Retirée de ce jour':'Retirée de ce jour, pour cette semaine seulement');break;}
+    case 'habituels':{const m=el.dataset.m;closeModal();
+      if(m==='A'||m==='B'||m==='five'){location.hash='reglages';setTimeout(()=>{const c=$('#jours-salle');if(c)c.scrollIntoView({block:'start'});},120);}
+      else{const mo=modeleParId(m);if(mo)ouvrirEditeur(mo,'semaine');}break;}
+    case 'semdefaut':confirmBox('Remettre la semaine par défaut ?','Les séances déplacées ou retirées cette semaine reviennent à leurs jours habituels. Les séances placées à une date ne bougent pas.','Remettre par défaut',()=>{remettreSemaine(weekStart());render();toast('Semaine remise par défaut');});break;
     case 'addtosession':addToSession(id);closeModal();toast(`${EX[id].name} ajouté à la séance`);location.hash='seance';setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},120);break;
     case 'pickalt':openPicker({mode:'addalt',for:id});break;
     case 'pickswap':openPicker({mode:'swap',for:id});break;

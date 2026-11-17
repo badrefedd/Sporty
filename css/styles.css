@@ -559,3 +559,9 @@ details summary{list-style-position:inside}
 
 /* Un élément caché reste caché, quel que soit son style. */
 [hidden]{display:none!important}
+
+/* ---------- v3 : semaine modifiable ---------- */
+.prevu-act{display:flex;flex-wrap:wrap;gap:8px}
+.nudge.manquee{padding:6px 10px}
+.nudge.manquee .badge{flex:none;font-size:12px;min-width:22px;height:20px;padding:0 4px;border-radius:6px}
+.jours .chip:disabled{opacity:1}

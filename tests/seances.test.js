@@ -190,7 +190,7 @@ test('F6 · sauvegarde puis import, avec séances perso et dates prévues',async
   a.run(`demarrerSeance('${id}');S.draft.sets.curl_ez[0].done=true;terminerSeance();`);
   const txt=a.run('contenuSauvegarde()');
   const o=JSON.parse(txt);
-  assert.equal(o.version,4);assert.equal(o.modeles.length,1);assert.equal(o.prevues.length,2);
+  assert.equal(o.version,5);assert.equal(o.modeles.length,1);assert.equal(o.prevues.length,2);
   // nouvelle appli vide, import « Tout remplacer »
   const b=await ouvrirAppli();
   await importer(b,txt,true);
@@ -359,6 +359,105 @@ test('H4 · « Enregistrer et placer » depuis un code, avec la date du code',as
   const a=await ouvrirAppli();
   const r=a.run(`(()=>{const R=lireCodeSeance(${JSON.stringify(CODE)});const s=enregistrerCode(R);return prevoir(s.id,R.date);})()`);
   assert.ok(r.ok);assert.equal(r.plan.date,'2026-11-20');
+});
+
+/* ---------------- Semaine modifiable : exceptions des séances récurrentes ---------------- */
+/* Semaine type (plan 1) : A lundi, B mercredi, Five vendredi. Semaine future fixe pour des tests stables. */
+const FUT='weekStart(pkey("2027-03-03"))';   // lundi 1er mars 2027
+const jour=(a,i)=>a.run(`dkey(addDays(${FUT},${i}))`);
+const itemsDe=(a,ws,m)=>a.run(`semaineItems(${ws}).filter(x=>x.modele==='${m}').map(x=>x.date+':'+x.etat+(x.deplacee?':deplacee':''))`);
+test('Sem · déplacer A de lundi à mardi, pour cette semaine seulement',async()=>{
+  const a=await ouvrirAppli();
+  const lun=jour(a,0),mar=jour(a,1);
+  assert.deepEqual(itemsDe(a,FUT,'A'),[lun+':prevu']);
+  const obj0=a.run(`objectifSemaine(${FUT}).total`);
+  assert.ok(a.run(`deplacerRecurrente('A','${lun}','${mar}').ok`));
+  assert.deepEqual(itemsDe(a,FUT,'A'),[mar+':prevu:deplacee'],'A apparaît mardi, plus rien lundi');
+  assert.equal(a.run(`objectifSemaine(${FUT}).total`),obj0,'l\'objectif ne change pas');
+  assert.deepEqual(itemsDe(a,`addDays(${FUT},7)`,'A'),[jour(a,7)+':prevu'],'la semaine suivante revient à la normale');
+  assert.equal(a.run(`modeleAB('A').jours.join()`),'1','les jours habituels ne changent pas');
+});
+test('Sem · redéplacer, revenir au jour d\'origine, placer un jour déjà occupé',async()=>{
+  const a=await ouvrirAppli();
+  const lun=jour(a,0),mar=jour(a,1),mer=jour(a,2);
+  a.run(`deplacerRecurrente('A','${lun}','${mar}')`);
+  a.run(`deplacerRecurrente('A','${lun}','${mer}')`);                  // redéplacée, le jour de B
+  assert.deepEqual(itemsDe(a,FUT,'A'),[mer+':prevu:deplacee']);
+  assert.deepEqual(itemsDe(a,FUT,'B'),[mer+':prevu'],'B reste aussi mercredi');
+  assert.equal(a.run('S.exceptions.length'),1,'une seule exception par séance et par date');
+  a.run(`deplacerRecurrente('A','${lun}','${lun}')`);
+  assert.deepEqual(itemsDe(a,FUT,'A'),[lun+':prevu']);assert.equal(a.run('S.exceptions.length'),0);
+  assert.ok(a.run(`deplacerRecurrente('A','${mar}','${mer}').erreur`),'A n\'est pas prévue mardi');
+});
+test('Sem · retirer de ce jour : plus prévue, objectif réduit',async()=>{
+  const a=await ouvrirAppli();
+  const obj0=a.run(`objectifSemaine(${FUT}).total`);
+  a.run(`retirerRecurrente('B','${jour(a,2)}')`);
+  assert.deepEqual(itemsDe(a,FUT,'B'),[]);
+  assert.equal(a.run(`objectifSemaine(${FUT}).total`),obj0-1);
+  assert.deepEqual(itemsDe(a,`addDays(${FUT},7)`,'B'),[jour(a,9)+':prevu']);
+});
+test('Sem · « Autre date » : déplacer vers la semaine suivante',async()=>{
+  const a=await ouvrirAppli();
+  a.run(`deplacerRecurrente('A','${jour(a,0)}','${jour(a,8)}')`);       // mardi de la semaine suivante
+  assert.deepEqual(itemsDe(a,FUT,'A'),[]);
+  assert.deepEqual(itemsDe(a,`addDays(${FUT},7)`,'A'),[jour(a,7)+':prevu',jour(a,8)+':prevu:deplacee']);
+});
+test('Sem · séance perso avec des jours : mêmes exceptions',async()=>{
+  const a=await ouvrirAppli();
+  const id=a.run(`enregistrerModele(Object.assign(${BRAS},{jours:[4]})).id`);   // jeudi
+  a.run(`deplacerRecurrente('${id}','${jour(a,3)}','${jour(a,5)}')`);
+  assert.deepEqual(itemsDe(a,FUT,id),[jour(a,5)+':prevu:deplacee']);
+  a.run(`supprimerModele('${id}')`);assert.equal(a.run('S.exceptions.length'),0);
+});
+test('Sem · « Remettre la semaine par défaut »',async()=>{
+  const a=await ouvrirAppli();
+  a.run(`deplacerRecurrente('A','${jour(a,0)}','${jour(a,1)}');retirerRecurrente('B','${jour(a,2)}');deplacerRecurrente('A','${jour(a,7)}','${jour(a,8)}')`);
+  assert.equal(a.run(`exceptionsSemaine(${FUT}).length`),2);
+  a.run(`remettreSemaine(${FUT})`);
+  assert.equal(a.run(`exceptionsSemaine(${FUT}).length`),0);
+  assert.deepEqual(itemsDe(a,FUT,'A'),[jour(a,0)+':prevu']);
+  assert.equal(a.run('S.exceptions.length'),1,'la semaine suivante garde son exception');
+});
+test('Sem · faite un autre jour sans déplacer : comptée ; pas faite : « manquée »',async()=>{
+  const a=await ouvrirAppli();
+  // semaine passée : A lundi pas faite, B faite jeudi au lieu de mercredi
+  const ws='weekStart(addDays(new Date(),-14))';
+  const jeu=a.run(`dkey(addDays(${ws},3))`);
+  a.run(`demarrerSeance('B',{start:pkey('${jeu}').getTime()+19*3600e3});S.draft.sets.dc_halt&&0;S.draft.sets[S.draft.list[0]][0].done=true;terminerSeance(pkey('${jeu}').getTime()+20*3600e3);`);
+  assert.deepEqual(a.run(`semaineItems(${ws}).filter(x=>x.modele==='B').map(x=>x.etat)`),['fait']);
+  assert.deepEqual(a.run(`seancesManquees(${ws}).map(x=>x.modele)`),['A']);
+  // « La placer aujourd'hui » sur une séance manquée de cette semaine
+  const lundi=a.run('dkey(weekStart())'),auj=a.run('dkey()');
+  if(lundi!==auj){
+    assert.ok(a.run(`seancesManquees(weekStart()).some(x=>x.modele==='A')`));
+    const it=a.run(`seancesManquees(weekStart()).find(x=>x.modele==='A')`);
+    a.run(`deplacerItem(${JSON.stringify(it)},dkey())`);
+    assert.deepEqual(a.run(`seancesManquees(weekStart()).map(x=>x.modele)`).filter(m=>m==='A'),[]);
+    assert.ok(a.run(`semaineItems(weekStart()).some(x=>x.modele==='A'&&x.date===dkey()&&x.etat==='prevu')`));
+  }
+});
+test('Sem · séance placée à une date : déplacer et retirer par le même chemin',async()=>{
+  const a=await ouvrirAppli();
+  const p=a.run(`prevoir('B','${jour(a,4)}').plan`);
+  const it=a.run(`semaineItems(${FUT}).find(x=>x.planId==='${p.id}')`);
+  a.run(`deplacerItem(${JSON.stringify(it)},'${jour(a,5)}')`);assert.equal(a.run('S.plans[0].date'),jour(a,5));
+  a.run(`retirerItem(${JSON.stringify(it)})`);assert.equal(a.run('S.plans.length'),0);
+});
+test('Sem · sauvegarde puis import avec exceptions ; ancienne sauvegarde sans exceptions',async()=>{
+  const a=await ouvrirAppli();
+  a.run(`deplacerRecurrente('A','${jour(a,0)}','${jour(a,1)}');retirerRecurrente('B','${jour(a,2)}')`);
+  const txt=a.run('contenuSauvegarde()');
+  assert.equal(JSON.parse(txt).exceptions.length,2);
+  const b=await ouvrirAppli();await importer(b,txt,false);
+  assert.deepEqual(itemsDe(b,FUT,'A'),[jour(b,1)+':prevu:deplacee']);assert.deepEqual(itemsDe(b,FUT,'B'),[]);
+  await b.attendre();const c=await ouvrirAppli(b.disque);assert.equal(c.run('S.exceptions.length'),2);
+  // fusion : même séance, même date d'origine → une seule exception
+  await importer(c,txt,false);assert.equal(c.run('S.exceptions.length'),2);
+  // une sauvegarde v4 (sans exceptions) s'importe toujours
+  const v4=JSON.stringify({app:'sporty',version:4,seances:[],pesees:[],activite:[],reglages:{plan:'1'},modeles:[],prevues:[]});
+  const d=await ouvrirAppli();await importer(d,v4,true);assert.equal(d.run('S.exceptions.length'),0);
+  assert.deepEqual(itemsDe(d,FUT,'A'),[jour(d,0)+':prevu']);
 });
 
 /* ---------------- Lancement ---------------- */
