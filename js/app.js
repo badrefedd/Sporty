@@ -36,6 +36,8 @@ function setDay(date,steps,kcal){
 
 /* ---------- Events ---------- */
 document.addEventListener('click',e=>{
+  /* toucher une animation (fiche) : pause ou reprise */
+  const il=e.target.closest('.illu.anim:not(.vignette)');if(il){basculerPause(il);return;}
   const el=e.target.closest('[data-act]');if(!el)return;
   const a=el.dataset.act,id=el.dataset.ex;
   switch(a){
@@ -135,11 +137,17 @@ document.addEventListener('click',e=>{
     case 'edjour':{const d=+el.dataset.d,j=new Set(S.edit.m.jours||[]);j.has(d)?j.delete(d):j.add(d);S.edit.m.jours=[...j].sort();render();break;}
     case 'edsave':{const r=enregistrerModele(S.edit.m);
       if(r.erreur){const e=$('#ed-err');if(e){e.textContent=r.erreur;e.hidden=false;e.scrollIntoView({block:'center'});}toast(r.erreur);return;}
-      const ret=S.edit.retour;S.edit=null;toast('Séance enregistrée');location.hash=ret==='seance-edit'?'seances':ret;break;}
+      const ret=S.edit.retour;S.edit=null;toast('Séance enregistrée');garderImagesSeances();location.hash=ret==='seance-edit'?'seances':ret;break;}
     case 'edcancel':{const ret=S.edit?S.edit.retour:'seances';S.edit=null;location.hash=ret==='seance-edit'?'seances':ret;break;}
     case 'edreset':{const t=S.edit.m.id;confirmBox(`Revenir à la ${S.edit.m.nom} d'origine ?`,'Tes changements d\'exercices seront remplacés par ceux du départ.','Revenir à l\'origine',()=>{reinitialiserAB(t);S.edit=null;location.hash='seances';toast('Séance d\'origine rétablie');},true);break;}
     case 'saveasperso':{const ses=S.sessions.find(x=>x.id===el.dataset.id);if(!ses)break;closeModal();ouvrirEditeur(modeleDepuisSeance(ses,''),'seances');toast('Donne un nom à ta séance.');break;}
     case 'refaire':{const ses=S.sessions.find(x=>x.id===el.dataset.id);if(!ses)break;ouvrirEditeur(modeleDepuisSeance(ses,`${infoSeance(ses).nom} (copie)`),'historique');break;}
+    /* mes photos */
+    case 'photos':S.photoEdit=null;photosSheet(id);break;
+    case 'pslotdel':S.photoEdit.imgs[+el.dataset.k]=null;photosSheet(S.photoEdit.id);break;
+    case 'psave':{const P=S.photoEdit,imgs=P.imgs.filter(Boolean);
+      enregistrerPhotos(P.id,imgs).then(()=>{S.photoEdit=null;render();exInfo(P.id);toast(imgs.length>1?'Photos enregistrées : elles s\'animent':'Photo enregistrée');});break;}
+    case 'photosdel':confirmBox('Revenir à l\'illustration d\'origine ?','Tes photos pour cet exercice seront supprimées de ce téléphone.','Supprimer mes photos',()=>{supprimerPhotos(id).then(()=>{render();exInfo(id);toast('Illustration d\'origine rétablie');});},true);break;
     /* coller une séance */
     case 'coller':ouvrirCollerSeance();break;
     case 'impread':{const t=$('#imptxt').value;if(!t.trim()){toast('Colle d\'abord le code.');return;}lireCollage(t);break;}
@@ -147,7 +155,7 @@ document.addEventListener('click',e=>{
     case 'impignorer':S.imp.lignes[+el.dataset.i].ignore=true;apercuCollage();break;
     case 'impbanque':openPicker({mode:'impfix',i:+el.dataset.i});break;
     case 'impcreer':S.impCreer=+el.dataset.i;newExSheet(S.imp.lignes[+el.dataset.i].nom);break;
-    case 'impsave':{const mid=validerCollage();if(!mid)break;closeModal();toast('Séance enregistrée dans Mes séances');if(location.hash==='#seances')render();else location.hash='seances';break;}
+    case 'impsave':{const mid=validerCollage();if(!mid)break;garderImagesSeances();closeModal();toast('Séance enregistrée dans Mes séances');if(location.hash==='#seances')render();else location.hash='seances';break;}
     case 'impplace':{const date=$('#impdate').value;if(!date){toast('Choisis une date.');return;}const mid=validerCollage();if(!mid)break;const r=prevoir(mid,date);closeModal();render();toast(r.erreur||`Séance prévue le ${fmtDate(date)}`);break;}
     case 'impstart':{const mid=validerCollage();if(!mid)break;closeModal();unlockAudio();startSession(mid);break;}
     /* séances prévues */
@@ -207,6 +215,12 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;
+  if(el.dataset.pslot!=null&&S.photoEdit){
+    const f=el.files&&el.files[0],k=+el.dataset.pslot;if(!f)return;
+    toast('Préparation de la photo…');
+    reduirePhoto(f).then(u=>{S.photoEdit.imgs[k]=u;photosSheet(S.photoEdit.id);},()=>toast('Impossible de lire cette photo.'));
+    return;
+  }
   if(el.id==='importfile'){
     const f=el.files&&el.files[0];if(!f)return;
     if(f.size>20e6){erreurImport('Ce fichier est trop gros pour être une sauvegarde Sporty.');return;}
@@ -219,6 +233,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!$('#modal').hidden)closeModal();
+  if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('illu')&&e.target.classList.contains('anim')){e.preventDefault();basculerPause(e.target);}
   if(e.key==='Enter'&&e.target.id==='wkg'){e.preventDefault();$('[data-act="addw"]').click();}
 });
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
@@ -233,9 +248,12 @@ window.addEventListener('hashchange',handleHash);
   applyTheme();
   handleHash();
   requestAnimationFrame(animate);
+  /* animations : seulement celles visibles à l'écran */
+  surveillerIllus();new MutationObserver(()=>surveillerIllus()).observe(document.body,{childList:true,subtree:true});
   /* Mode hors connexion : le « service worker » garde une copie de l'appli sur le téléphone. */
   if('serviceWorker' in navigator&&location.protocol!=='file:'){
     navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW',e));
+    navigator.serviceWorker.ready.then(()=>garderImagesSeances());
   }
 })();
 

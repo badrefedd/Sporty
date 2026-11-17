@@ -11,7 +11,7 @@
    ===================================================================== */
 
 /* ---------- État ---------- */
-const S={settings:{theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},sessions:[],weights:[],days:[],draft:null,meta:{},modeles:[],plans:[],exceptions:[],route:'semaine',histEx:null,openHist:null,bankQ:'',bankG:'all',cal:null,semVue:'semaine'};
+const S={settings:{theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},sessions:[],weights:[],days:[],draft:null,meta:{},modeles:[],plans:[],exceptions:[],photos:{},route:'semaine',histEx:null,openHist:null,bankQ:'',bankG:'all',cal:null,semVue:'semaine'};
 
 /* Collections : nom → champ servant de clé. */
 const COLLECTIONS={sessions:'id',weights:'date',days:'date'};
@@ -22,11 +22,13 @@ const MoteurIDB={
   ouvrir(){
     return new Promise((ok,ko)=>{
       if(!window.indexedDB)return ko(new Error('IndexedDB absent'));
-      const r=indexedDB.open('sporty',1);
+      const r=indexedDB.open('sporty',2);
       r.onupgradeneeded=()=>{
         const db=r.result;
         for(const [n,k] of Object.entries(COLLECTIONS))if(!db.objectStoreNames.contains(n))db.createObjectStore(n,{keyPath:k});
         if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');
+        /* v2 : mes photos d'exercices, une entrée par exercice { id, imgs:[data URL…] } */
+        if(!db.objectStoreNames.contains('photos'))db.createObjectStore('photos',{keyPath:'id'});
       };
       r.onsuccess=()=>{this.db=r.result;ok();};
       r.onerror=()=>ko(r.error);
@@ -42,7 +44,8 @@ const MoteurIDB={
   },
   async charger(){
     const out={};
-    await this.tx(Object.keys(COLLECTIONS).concat('kv'),'readonly',t=>{
+    await this.tx(Object.keys(COLLECTIONS).concat('kv','photos'),'readonly',t=>{
+      const rp=t.objectStore('photos').getAll();rp.onsuccess=()=>{out.photos={};rp.result.forEach(x=>{out.photos[x.id]=x.imgs;});};
       for(const n of Object.keys(COLLECTIONS)){const r=t.objectStore(n).getAll();r.onsuccess=()=>{out[n]=r.result;};}
       for(const k of ['settings','draft','meta','modeles','plans','exceptions']){const r=t.objectStore('kv').get(k);r.onsuccess=()=>{out[k]=r.result;};}
     });
@@ -52,8 +55,10 @@ const MoteurIDB={
   suppr(col,key){return this.tx([col],'readwrite',t=>{t.objectStore(col).delete(key);});},
   putKv(k,val){return this.tx(['kv'],'readwrite',t=>{val==null?t.objectStore('kv').delete(k):t.objectStore('kv').put(val,k);});},
   /* Remplace tout le contenu d'un coup (import). Une seule transaction : tout ou rien. */
+  putPhoto(id,imgs){return this.tx(['photos'],'readwrite',t=>{imgs&&imgs.length?t.objectStore('photos').put({id,imgs}):t.objectStore('photos').delete(id);});},
   remplacer(d){
-    return this.tx(Object.keys(COLLECTIONS).concat('kv'),'readwrite',t=>{
+    return this.tx(Object.keys(COLLECTIONS).concat('kv','photos'),'readwrite',t=>{
+      if(d.photos){const ps=t.objectStore('photos');ps.clear();Object.entries(d.photos).forEach(([id,imgs])=>ps.put({id,imgs}));}
       for(const n of Object.keys(COLLECTIONS)){const s=t.objectStore(n);s.clear();(d[n]||[]).forEach(v=>s.put(v));}
       const kv=t.objectStore('kv');
       kv.put(d.settings,'settings');
@@ -70,10 +75,11 @@ const MoteurIDB={
 const MoteurLS={
   nom:'localStorage',
   async ouvrir(){localStorage.setItem('sporty:test','1');localStorage.removeItem('sporty:test');},
-  async charger(){const raw=localStorage.getItem('sporty:data');return raw?JSON.parse(raw):{};},
+  async charger(){const raw=localStorage.getItem('sporty:data');const d=raw?JSON.parse(raw):{};try{d.photos=JSON.parse(localStorage.getItem('sporty:photos')||'{}');}catch(e){}return d;},
+  async putPhoto(){localStorage.setItem('sporty:photos',JSON.stringify(S.photos||{}));},
   ecrire(){localStorage.setItem('sporty:data',JSON.stringify({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,draft:S.draft,meta:S.meta,modeles:S.modeles,plans:S.plans,exceptions:S.exceptions}));},
   async put(){this.ecrire();},async suppr(){this.ecrire();},async putKv(){this.ecrire();},
-  async remplacer(){this.ecrire();}
+  async remplacer(d){this.ecrire();if(d&&d.photos)localStorage.setItem('sporty:photos',JSON.stringify(d.photos));}
 };
 
 /* ---------- Store : ce que le reste de l'appli utilise ---------- */
@@ -100,7 +106,7 @@ const Store={
     if(d.settings)Object.assign(S.settings,d.settings);
     S.sessions=d.sessions||[];S.weights=(d.weights||[]).filter(w=>typeof w.kg==='number');S.days=d.days||[];
     S.draft=d.draft&&d.draft.type?d.draft:null;S.meta=d.meta||{};
-    S.modeles=Array.isArray(d.modeles)?d.modeles:[];S.plans=Array.isArray(d.plans)?d.plans:[];S.exceptions=Array.isArray(d.exceptions)?d.exceptions:[];
+    S.modeles=Array.isArray(d.modeles)?d.modeles:[];S.plans=Array.isArray(d.plans)?d.plans:[];S.exceptions=Array.isArray(d.exceptions)?d.exceptions:[];S.photos=d.photos&&typeof d.photos==='object'?d.photos:{};
   },
   q(key,fn){
     const prev=this.queues[key]||Promise.resolve();
@@ -127,12 +133,14 @@ const Store={
   saveModeles(){const v=clone(S.modeles||[]);return this.q('modeles',m=>m.putKv('modeles',v));},
   savePlans(){const v=clone(S.plans||[]);return this.q('plans',m=>m.putKv('plans',v));},
   saveExceptions(){const v=clone(S.exceptions||[]);return this.q('exceptions',m=>m.putKv('exceptions',v));},
+  savePhotos(id){const v=S.photos&&S.photos[id]?S.photos[id].slice():null;return this.q('p:'+id,m=>m.putPhoto(id,v));},
   saveMeta(){const v=clone(S.meta);return this.q('meta',m=>m.putKv('meta',v));},
   /* Réécrit tout l'état courant (après un import). Rejette en cas d'échec, pour que l'écran d'import le dise. */
   async toutEnregistrer(){
     if(!this.moteur)throw new Error('Stockage indisponible');
     await Promise.all(Object.values(this.queues));
     const d=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,draft:S.draft,meta:S.meta,modeles:S.modeles||[],plans:S.plans||[],exceptions:S.exceptions||[]});
+    d.photos=S.photos||{};
     try{localStorage.setItem('sporty:theme',S.settings.theme);}catch(e){}
     await this.moteur.remplacer(d);
   }

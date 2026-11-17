@@ -4,7 +4,7 @@
   "description": "Appli perso de suivi de musculation, poids, pas et kcal.",
   "scripts": {
     "test": "node tests/run.js",
-    "e2e": "node tests/e2e-iphone.js",
-    "docs": "node outils/alternatives-md.js && node outils/exercices-md.js"
+    "e2e": "node tests/e2e-iphone.js && node tests/e2e-illustrations.js",
+    "docs": "node outils/alternatives-md.js && node outils/exercices-md.js && node outils/animations-md.js"
   }
 }

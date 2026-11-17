@@ -7,15 +7,26 @@
 const RAPPEL_JOURS=30;
 
 function nomFichierSauvegarde(){return `sporty-sauvegarde-${dkey()}.json`;}
-function contenuSauvegarde(){
-  return JSON.stringify({app:'sporty',version:5,exporte_le:new Date().toISOString(),seances:S.sessions,pesees:S.weights,activite:S.days,reglages:S.settings,modeles:S.modeles||[],prevues:S.plans||[],exceptions:S.exceptions||[]},null,1);
+const LIMITE_SAUVEGARDE=20*1024*1024;
+/* avecPhotos : inclure mes photos d'exercices (case « Inclure mes photos », cochée par défaut). */
+function contenuSauvegarde(avecPhotos){
+  const o={app:'sporty',version:6,exporte_le:new Date().toISOString(),seances:S.sessions,pesees:S.weights,activite:S.days,reglages:S.settings,modeles:S.modeles||[],prevues:S.plans||[],exceptions:S.exceptions||[]};
+  if(avecPhotos&&nbPhotos())o.photos=S.photos;
+  return JSON.stringify(o,null,1);
 }
+const tailleMo=t=>(new Blob([t]).size/1024/1024);
 function marquerSauvegarde(){S.meta.lastBackup=Date.now();delete S.meta.snooze;Store.saveMeta();}
 
 /* Sur iPhone, la feuille de partage propose « Enregistrer dans Fichiers » (iCloud Drive ou le téléphone).
    Sur ordinateur, ou si le partage n'est pas possible : téléchargement classique. */
-async function sauvegarder(){
-  const txt=contenuSauvegarde(),nom=nomFichierSauvegarde();
+async function sauvegarder(confirme){
+  const caseP=$('#bk-photos'),avecPhotos=caseP?caseP.checked:true;
+  const txt=contenuSauvegarde(avecPhotos),nom=nomFichierSauvegarde();
+  const mo=tailleMo(txt);
+  if(!confirme&&mo*1024*1024>LIMITE_SAUVEGARDE){
+    confirmBox('Fichier volumineux',`La sauvegarde fait ${fmt1(mo)} Mo, surtout à cause de tes photos. Tu peux continuer, ou décocher « Inclure mes photos » pour un fichier plus léger.`,'Continuer',()=>{sauvegarder(true);});
+    return;
+  }
   let fichier=null;
   try{fichier=new File([txt],nom,{type:'application/json'});}catch(e){}
   if(fichier&&navigator.canShare&&navigator.canShare({files:[fichier]})){
@@ -56,7 +67,13 @@ function lireSauvegarde(txt){
   const prevues=arr(o.prevues).filter(p=>p&&p.id&&isDate(p.date)&&p.modele).map(p=>({id:String(p.id),date:p.date,modele:String(p.modele)}));
   /* v5 : séances récurrentes déplacées ou retirées pour une semaine. */
   const exceptions=arr(o.exceptions).filter(e=>e&&e.id&&e.modele&&isDate(e.origine)&&(e.action==='retire'||(e.action==='deplace'&&isDate(e.vers)))).map(e=>{const x={id:String(e.id),modele:String(e.modele),origine:e.origine,action:e.action};if(e.action==='deplace')x.vers=e.vers;return x;});
-  return {seances,pesees,activite,reglages,modeles,prevues,exceptions,date:o.exporte_le||null,version:o.version||2};
+  /* v6 : mes photos d'exercices (facultatives). null = le fichier n'en contient pas. */
+  let photos=null;
+  if(o.photos&&typeof o.photos==='object'&&!Array.isArray(o.photos)){
+    photos={};
+    for(const [id,imgs] of Object.entries(o.photos)){const ok=arr(imgs).filter(u=>typeof u==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(u)).slice(0,2);if(ok.length)photos[id]=ok;}
+  }
+  return {seances,pesees,activite,reglages,modeles,prevues,exceptions,photos,date:o.exporte_le||null,version:o.version||2};
 }
 
 let importEnAttente=null;
@@ -85,6 +102,7 @@ function apercuImport(r){
       <li>${n(r.activite.length,'jour d\'activité','jours d\'activité')}</li>
       ${r.modeles.length?`<li>${n(r.modeles.length,'séance perso','séances perso')}</li>`:''}
       ${r.prevues.length?`<li>${n(r.prevues.length,'séance prévue à une date','séances prévues à une date')}</li>`:''}
+      ${r.photos&&Object.keys(r.photos).length?`<li>${n(Object.keys(r.photos).length,'exercice avec mes photos','exercices avec mes photos')}</li>`:''}
       ${r.exceptions.length?`<li>${n(r.exceptions.length,'changement de semaine (séance déplacée ou retirée)','changements de semaine (séances déplacées ou retirées)')}</li>`:''}
       <li>${r.reglages?'Tes réglages (thème, jours, objectif, alternatives, exercices perso)':'Pas de réglages'}</li>
     </ul>
@@ -114,17 +132,19 @@ function fusionnerSeancesPerso(r){
 }
 async function appliquerImport(remplacer){
   const r=importEnAttente;if(!r)return;
-  const avant=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,modeles:S.modeles||[],plans:S.plans||[],exceptions:S.exceptions||[]});
+  const avant=clone({photos:S.photos||{},settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,modeles:S.modeles||[],plans:S.plans||[],exceptions:S.exceptions||[]});
   /* Appli encore vide (premier import) : on reprend aussi le thème, les jours et l'objectif du fichier. */
   const vide=!S.sessions.length&&!S.weights.length&&!S.days.length;
   if(remplacer||vide){
     S.sessions=r.seances;S.weights=r.pesees;S.days=r.activite;
     if(remplacer){S.modeles=r.modeles;S.plans=r.prevues;S.exceptions=r.exceptions;}
+    if(r.photos)S.photos=remplacer?r.photos:Object.assign({},S.photos,r.photos);
     else fusionnerSeancesPerso(r);
     if(r.reglages)S.settings=Object.assign({theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},r.reglages);
   }else{
     const byId=new Map(S.sessions.map(s=>[s.id,s]));r.seances.forEach(s=>byId.set(s.id,s));S.sessions=[...byId.values()];
     const wm=new Map(S.weights.map(w=>[w.date,w]));r.pesees.forEach(w=>wm.set(w.date,w));S.weights=[...wm.values()];
+    if(r.photos)S.photos=Object.assign({},S.photos,r.photos);
     fusionnerSeancesPerso(r);
     const dm=new Map(S.days.map(d=>[d.date,d]));r.activite.forEach(d=>dm.set(d.date,Object.assign({},dm.get(d.date),d)));S.days=[...dm.values()];
     if(r.reglages){

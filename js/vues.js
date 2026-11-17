@@ -130,7 +130,7 @@ function exCard(id){
     <button class="check" data-act="toggleset" data-ex="${id}" data-i="${i}" aria-label="${x.done?'Annuler':'Valider'} la série ${i+1}" aria-pressed="${x.done}">${I.check}</button></div>`).join('');
   return `<section class="card ex ${allDone?'complete':''}" id="ex-${id}">
     <div class="ex-top">
-      <button class="ex-thumb" data-act="exinfo" data-ex="${id}" aria-label="Voir comment faire : ${esc(e.name)}">${visualFor(id)}<span class="play">${I.play}</span></button>
+      <button class="ex-thumb" data-act="exinfo" data-ex="${id}" aria-label="Voir comment faire : ${esc(e.name)}">${illuHTML(id,'vignette')}<span class="play">${I.play}</span></button>
       <div style="min-width:0"><h3>${esc(e.name)}</h3>${orig&&EX[orig]?`<p class="small muted" style="margin:2px 0 0">À la place de ${esc(EX[orig].name)}</p>`:''}<p class="presc">${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}${e.perHand?' · kg par haltère':''}${e.note?' · '+esc(e.note):''}</p>
       ${sg.last?`<p class="last" style="margin-top:4px">Dernière fois : <b>${setsStr(id,sg.last.ex[id])}</b></p>`:''}</div>
     </div>
@@ -207,7 +207,7 @@ function addToSession(id){
 function altRow(from,x,opts){
   const e=EX[x.id],tags=altTags(from,x.id,opts);
   const act=opts.act||'swapto';
-  return `<button class="bank-row alt" data-act="${act}" data-ex="${x.id}" data-from="${from}"><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0;flex:1"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(e.equip)}${x.note?' · '+esc(x.note):''}</span>${tags.length?`<span class="tags">${tags.map(t=>`<i class="t-${norm(t).replace(/\W+/g,'-')}">${esc(t)}</i>`).join('')}</span>`:''}</span></button>`;
+  return `<button class="bank-row alt" data-act="${act}" data-ex="${x.id}" data-from="${from}"><span class="ic">${illuHTML(x.id,'liste')}</span><span style="min-width:0;flex:1"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(e.equip)}${x.note?' · '+esc(x.note):''}</span>${tags.length?`<span class="tags">${tags.map(t=>`<i class="t-${norm(t).replace(/\W+/g,'-')}">${esc(t)}</i>`).join('')}</span>`:''}</span></button>`;
 }
 function altSheet(id){
   const e=EX[id],L=altLists(id,S.draft?S.draft.list:[]);
@@ -225,7 +225,7 @@ function altSheet(id){
 function bankRow(id,act,from){
   const e=EX[id];if(!e)return '';
   const L=act?null:altLists(id),n=L?L.off.length+L.perso.length:0;
-  return `<button class="bank-row" data-act="${act||'exinfo'}" data-ex="${id}"${from?` data-from="${from}"`:''}><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(GROUPS[e.group]||'')} · ${esc(e.equip)}${e.custom?' · perso':''}</span></span>${isHidden(id)&&!act?`<span class="tag off">masqué</span>`:n&&!act?`<span class="tag">${n} alt.</span>`:''}</button>`;
+  return `<button class="bank-row" data-act="${act||'exinfo'}" data-ex="${id}"${from?` data-from="${from}"`:''}><span class="ic">${illuHTML(id,'liste')}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(GROUPS[e.group]||'')} · ${esc(e.equip)}${e.custom?' · perso':''}</span></span>${isHidden(id)&&!act?`<span class="tag off">masqué</span>`:n&&!act?`<span class="tag">${n} alt.</span>`:''}</button>`;
 }
 function filterIds(q,g,withHidden){
   const nq=norm(q.trim());
@@ -250,7 +250,13 @@ function viewExos(){
 function exInfo(id){
   const e=EX[id],inDraft=S.draft&&S.draft.list.includes(id),L=altLists(id,inDraft?S.draft.list:[]);
   openModal(`<div class="sheet-head"><div><div class="eyebrow">${esc(GROUPS[e.group]||'')} · ${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}</div><h2 class="title-l">${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
-  <div class="figbox">${visualFor(id,FIG[id]?'Animation du mouvement : '+e.name:'Muscles travaillés : '+e.muscles.join(', '))}</div>
+  <div class="figbox${['photo','perso'].includes(typeVisuel(id))?' photo':''}">${illuHTML(id,'grand')}</div>
+  ${illuNote(id)}
+  ${['photo','perso','bonhomme'].includes(typeVisuel(id))?`<div class="muscles-mini">${mmapSVG(e.group,'Muscles travaillés : '+e.muscles.join(', '),true)}<span class="small"><b>Muscles travaillés</b><br><span class="muted">${esc(e.muscles.join(', '))}</span></span></div>`:''}
+  <div class="row" style="flex-wrap:wrap">
+    <button class="btn sm ghost" data-act="photos" data-ex="${id}">${I.camera} ${typeVisuel(id)==='perso'?'Changer mes photos':'Ajouter mes photos'}</button>
+    ${typeVisuel(id)==='perso'?`<button class="btn sm ghost" data-act="photosdel" data-ex="${id}">Revenir à l'illustration d'origine</button>`:''}
+  </div>
   <div class="pills"><span class="pill">${esc(e.equip)}</span>${e.muscles.map(m=>`<span class="pill">${esc(m)}</span>`).join('')}${e.perHand?'<span class="pill">Charge par haltère</span>':''}</div>
   ${e.cues.length?`<ul class="cues">${e.cues.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:'<p class="small muted" style="margin:0">Exercice perso : ajoute ta vidéo dans Réglages si tu veux.</p>'}
   <a class="btn primary block" href="${esc(videoUrl(id))}" target="_blank" rel="noopener noreferrer">${I.ext} Voir la vidéo</a>
@@ -408,9 +414,13 @@ function viewReglages(){
   <section class="card stack" id="donnees"><h2 class="title-m">Mes données</h2>
     <p class="small muted" style="margin:0">Tes séances, pesées et pas sont enregistrés uniquement sur ce téléphone. Si tu supprimes l'appli ou changes de téléphone, seule une sauvegarde permet de les retrouver.</p>
     <p class="small" style="margin:0;font-weight:600">${texteDerniereSauvegarde()}</p>
+    ${nbPhotos()?`<label class="row small" style="gap:8px;font-weight:600"><input type="checkbox" id="bk-photos" checked> Inclure mes photos (${nbPhotos()} photo${nbPhotos()>1?'s':''})</label>`:''}
     <button class="btn primary block" data-act="backup">${I.save} Sauvegarder mes données</button>
     <button class="btn ghost block" data-act="openimport">Importer une sauvegarde</button>
     <p class="small muted" style="margin:0">La sauvegarde crée un fichier : choisis « Enregistrer dans Fichiers », puis iCloud Drive pour le garder en lieu sûr. Sporty te le rappelle si ta dernière sauvegarde date de plus de ${RAPPEL_JOURS} jours.</p>
+  </section>
+  <section class="card stack" id="apropos"><h2 class="title-m">À propos</h2>
+    <p class="small muted" style="margin:0">Illustrations : free-exercise-db (domaine public).<br>Polices : Barlow et Barlow Condensed (licence SIL OFL).</p>
   </section>`;
 }
 

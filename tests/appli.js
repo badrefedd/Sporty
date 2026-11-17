@@ -1,7 +1,7 @@
 /* Charge la logique de l'appli hors navigateur (sans écran), avec un faux localStorage.
    Deux appels qui partagent le même « disque » simulent la fermeture et la réouverture de l'appli. */
 const fs=require('fs'),path=require('path'),vm=require('vm');
-const FICHIERS=['js/outils.js','js/exercices.js','js/alternatives.js','js/stockage.js','js/sauvegarde.js','js/logique.js','js/seances.js'];
+const FICHIERS=['js/outils.js','js/exercices.js','js/alternatives.js','js/stockage.js','js/sauvegarde.js','js/logique.js','js/seances.js','js/illustrations.js','js/visuels.js','js/photos.js'];
 
 function nouveauDisque(){return new Map();}
 async function ouvrirAppli(disque){

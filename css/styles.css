@@ -565,3 +565,43 @@ details summary{list-style-position:inside}
 .nudge.manquee{padding:6px 10px}
 .nudge.manquee .badge{flex:none;font-size:12px;min-width:22px;height:20px;padding:0 4px;border-radius:6px}
 .jours .chip:disabled{opacity:1}
+
+/* ---------- v3 : photos animées des exercices ---------- */
+/* Cadre aux coins arrondis, léger liseré ; les couleurs de la photo ne sont pas modifiées. */
+.illu{position:relative;width:100%;overflow:hidden;border-radius:14px;background:var(--surface2);box-shadow:0 0 0 1px var(--line)}
+.dark .illu{box-shadow:0 0 0 1px rgba(255,255,255,.22)}
+.illu img{display:block;width:100%;height:100%;object-fit:cover}
+.illu.perso img{object-fit:contain;background:#000}
+.illu .pos{margin:0;position:absolute;inset:0}
+.illu .pos figcaption{display:none}
+/* Fondu enchaîné : environ 1,2 s par position, en boucle. En pause tant que l'image n'est pas à l'écran. */
+.illu.anim .p1{opacity:0;animation:fondu 2.4s ease-in-out infinite;animation-play-state:paused}
+.illu.anim.actif:not(.pause) .p1{animation-play-state:running}
+@keyframes fondu{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
+.illu.anim:not(.vignette){cursor:pointer}
+.illu .pause-ic{position:absolute;right:8px;bottom:8px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:none;align-items:center;justify-content:center}
+.illu .pause-ic svg{width:12px;height:12px}
+.illu.pause .pause-ic{display:flex}
+.figbox.photo{background:none;padding:0}
+.illu-note{margin:-4px 0 0}
+.muscles-mini{display:flex;align-items:center;gap:10px}
+.muscles-mini svg{width:54px;height:66px;flex:none;background:var(--surface2);border-radius:10px}
+/* vignettes : carte en séance (animée) et liste de la banque (fixe) */
+.ex-thumb .illu{height:100%;border-radius:10px;box-shadow:none}
+.ex-thumb .illu img{object-fit:cover}
+.bank-row .ic .illu-liste{width:46px;height:46px;object-fit:cover;display:block}
+/* « Réduire les animations » : les 2 photos côte à côte, avec Départ et Arrivée ; une image fixe reste seule. */
+@media (prefers-reduced-motion:reduce){
+  .illu.anim:not(.vignette){display:grid;grid-template-columns:1fr 1fr;gap:6px;aspect-ratio:auto!important;background:none;box-shadow:none;border-radius:0;overflow:visible}
+  .illu.anim:not(.vignette) .pos{position:static}
+  .illu.anim:not(.vignette) .pos img{border-radius:12px;height:auto;aspect-ratio:inherit;box-shadow:0 0 0 1px var(--line)}
+  .illu.anim:not(.vignette) .p1{opacity:1;animation:none}
+  .illu.anim:not(.vignette) .pos figcaption{display:block;text-align:center;font-size:12px;font-weight:700;color:var(--muted);margin-top:4px}
+  .illu.anim.vignette .p1{display:none}
+  .illu .pause-ic{display:none!important}
+}
+/* mes photos */
+.pslots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pslot{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.pslot img,.pslot .pvide{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;background:var(--surface2);box-shadow:0 0 0 1px var(--line)}
+.pslot .pvide{display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}

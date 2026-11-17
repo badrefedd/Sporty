@@ -1,148 +1,868 @@
 {
-  "_source": "free-exercise-db (github.com/yuhonas/free-exercise-db), licence Unlicense (domaine public), commit f00c92c du 27 septembre 2026",
-  "_format": "id Sporty : [exercice free-exercise-db ou null, exacte | proche | aucune, différence pour « proche »]",
-  "dc": ["Barbell_Bench_Press_-_Medium_Grip", "exacte", ""],
-  "dc_halt": ["Dumbbell_Bench_Press", "exacte", ""],
-  "dci": ["Incline_Dumbbell_Press", "exacte", ""],
-  "dci_barre": ["Barbell_Incline_Bench_Press_-_Medium_Grip", "exacte", ""],
-  "dd_barre": ["Decline_Barbell_Bench_Press", "exacte", ""],
-  "dc_smith": ["Smith_Machine_Bench_Press", "exacte", ""],
-  "dci_smith": ["Smith_Machine_Incline_Bench_Press", "exacte", ""],
-  "dci_convergent": ["Leverage_Incline_Chest_Press", "exacte", ""],
-  "chest_press": ["Machine_Bench_Press", "exacte", ""],
-  "chest_press_inc": ["Leverage_Incline_Chest_Press", "proche", "machine à disques au lieu d'une machine à charge guidée"],
-  "dc_convergent": ["Leverage_Chest_Press", "exacte", ""],
-  "pec_deck": ["Butterfly", "exacte", ""],
-  "ecarte_halt": ["Dumbbell_Flyes", "exacte", ""],
-  "ecarte_inc": ["Incline_Dumbbell_Flyes", "exacte", ""],
-  "crossover": ["Cable_Crossover", "exacte", ""],
-  "crossover_bas": ["Low_Cable_Crossover", "exacte", ""],
-  "pompes": ["Pushups", "exacte", ""],
-  "dips_pecs": ["Dips_-_Chest_Version", "exacte", ""],
-  "pullover": ["Straight-Arm_Dumbbell_Pullover", "exacte", ""],
-  "tirage": ["Wide-Grip_Lat_Pulldown", "exacte", ""],
-  "tirage_serre": ["Close-Grip_Front_Lat_Pulldown", "exacte", ""],
-  "tirage_unilat": ["One_Arm_Lat_Pulldown", "proche", "à la poulie avec une poignée, pas à la machine"],
-  "tirage_machine": ["Leverage_High_Row", "proche", "machine « high row » : on tire un peu plus vers l'avant"],
-  "traction": ["Pullups", "exacte", ""],
-  "traction_assist": ["Band_Assisted_Pull-Up", "proche", "aidé par un élastique au lieu de la machine"],
-  "row": ["Seated_Cable_Rows", "exacte", ""],
-  "row_machine": ["Leverage_Iso_Row", "proche", "machine à disques au lieu d'une machine à charge guidée"],
-  "row_convergent": ["Leverage_Iso_Row", "exacte", ""],
-  "row_barre": ["Bent_Over_Barbell_Row", "exacte", ""],
-  "row_halt": ["One-Arm_Dumbbell_Row", "exacte", ""],
-  "row_t": ["Lying_T-Bar_Row", "exacte", ""],
-  "row_trx": ["Inverted_Row_with_Straps", "exacte", ""],
-  "pullover_poulie": ["Straight-Arm_Pulldown", "exacte", ""],
-  "sdt": ["Barbell_Deadlift", "exacte", ""],
-  "sdt_trapbar": ["Trap_Bar_Deadlift", "exacte", ""],
-  "shrug_halt": ["Dumbbell_Shrug", "exacte", ""],
-  "shrug_barre": ["Barbell_Shrug", "exacte", ""],
-  "shrug_smith": ["Smith_Machine_Behind_the_Back_Shrug", "proche", "barre tenue derrière le dos"],
-  "dm_halt": ["Dumbbell_Shoulder_Press", "exacte", ""],
-  "dm_barre": ["Standing_Military_Press", "exacte", ""],
-  "shoulder_press": ["Machine_Shoulder_Military_Press", "exacte", ""],
-  "dm_smith": ["Smith_Machine_Overhead_Shoulder_Press", "exacte", ""],
-  "arnold": ["Arnold_Dumbbell_Press", "exacte", ""],
-  "lat": ["Side_Lateral_Raise", "exacte", ""],
-  "lat_poulie": ["Cable_Seated_Lateral_Raise", "proche", "assis et les deux bras en même temps"],
-  "lat_machine": [null, "aucune", ""],
-  "front_raise": ["Front_Dumbbell_Raise", "exacte", ""],
-  "front_raise_poulie": ["Front_Cable_Raise", "exacte", ""],
-  "oiseau": ["Seated_Bent-Over_Rear_Delt_Raise", "proche", "assis penché au bout du banc, pas debout"],
-  "rear_delt": ["Reverse_Machine_Flyes", "exacte", ""],
-  "face_pull": ["Face_Pull", "exacte", ""],
-  "upright_row": ["Upright_Barbell_Row", "exacte", ""],
-  "curl": ["Dumbbell_Bicep_Curl", "exacte", ""],
-  "curl_barre": ["Barbell_Curl", "exacte", ""],
-  "curl_ez": ["EZ-Bar_Curl", "exacte", ""],
-  "curl_marteau": ["Hammer_Curls", "exacte", ""],
-  "curl_incline": ["Incline_Dumbbell_Curl", "exacte", ""],
-  "curl_pupitre": ["Machine_Preacher_Curls", "exacte", ""],
-  "curl_poulie": ["Standing_Biceps_Cable_Curl", "exacte", ""],
-  "curl_concentre": ["Concentration_Curls", "exacte", ""],
-  "curl_machine": ["Machine_Bicep_Curl", "proche", "machine où les coudes sont à hauteur d'épaules"],
-  "tri": ["Triceps_Pushdown", "exacte", ""],
-  "tri_corde": ["Triceps_Pushdown_-_Rope_Attachment", "exacte", ""],
-  "tri_overhead": ["Cable_Rope_Overhead_Triceps_Extension", "exacte", ""],
-  "barre_front": ["EZ-Bar_Skullcrusher", "exacte", ""],
-  "tri_halt_tete": ["Seated_Triceps_Press", "exacte", ""],
-  "kickback": ["Tricep_Dumbbell_Kickback", "exacte", ""],
-  "dips": ["Dips_-_Triceps_Version", "exacte", ""],
-  "dips_machine": ["Dip_Machine", "exacte", ""],
-  "dc_serre": ["Close-Grip_Barbell_Bench_Press", "exacte", ""],
-  "dips_banc": ["Bench_Dips", "exacte", ""],
-  "wrist_curl": ["Seated_Palm-Up_Barbell_Wrist_Curl", "exacte", ""],
-  "reverse_curl": ["Reverse_Barbell_Curl", "proche", "barre droite au lieu de la barre EZ"],
-  "farmer": ["Farmers_Walk", "proche", "poignées de strongman au lieu d'haltères"],
-  "presse": ["Leg_Press", "exacte", ""],
-  "presse_horiz": ["Leg_Press", "proche", "presse inclinée à 45° au lieu d'horizontale"],
-  "squat": ["Barbell_Squat", "exacte", ""],
-  "squat_smith": ["Smith_Machine_Squat", "exacte", ""],
-  "hack_squat": ["Hack_Squat", "exacte", ""],
-  "front_squat": ["Front_Barbell_Squat", "exacte", ""],
-  "goblet": ["Goblet_Squat", "proche", "avec une kettlebell au lieu d'un haltère"],
-  "legext": ["Leg_Extensions", "exacte", ""],
-  "legext_poulie": ["Single-Leg_Leg_Extension", "proche", "à la machine, une jambe, au lieu de la poulie"],
-  "sissy": ["Weighted_Sissy_Squat", "exacte", ""],
-  "fentes": ["Dumbbell_Lunges", "exacte", ""],
-  "fentes_marchees": ["Barbell_Walking_Lunge", "proche", "barre sur les épaules au lieu d'haltères"],
-  "bulgare": ["Split_Squat_with_Dumbbells", "exacte", ""],
-  "step_up": ["Dumbbell_Step_Ups", "exacte", ""],
-  "legcurl": ["Lying_Leg_Curls", "exacte", ""],
-  "legcurl_assis": ["Seated_Leg_Curl", "exacte", ""],
-  "legcurl_debout": ["Standing_Leg_Curl", "exacte", ""],
-  "legcurl_poulie": ["Standing_Leg_Curl", "proche", "à la machine au lieu de la poulie"],
-  "sdt_roumain": ["Romanian_Deadlift", "exacte", ""],
-  "sdt_roumain_halt": ["Stiff-Legged_Dumbbell_Deadlift", "proche", "jambes presque tendues"],
-  "good_morning": ["Good_Morning", "exacte", ""],
-  "hip": ["Barbell_Hip_Thrust", "exacte", ""],
-  "hip_machine": ["Barbell_Hip_Thrust", "proche", "barre libre au lieu de la machine"],
-  "hip_smith": ["Barbell_Hip_Thrust", "proche", "barre libre au lieu de la Smith machine"],
-  "glute_bridge": ["Butt_Lift_Bridge", "exacte", ""],
-  "kickback_poulie": ["One-Legged_Cable_Kickback", "exacte", ""],
-  "glute_machine": ["Glute_Kickback", "proche", "au sol, sans machine"],
-  "abducteurs": ["Thigh_Abductor", "exacte", ""],
-  "abduc_poulie": [null, "aucune", ""],
-  "sdt_sumo": ["Sumo_Deadlift", "exacte", ""],
-  "adducteurs": ["Thigh_Adductor", "exacte", ""],
-  "adduc_poulie": ["Cable_Hip_Adduction", "exacte", ""],
-  "mollets_debout": ["Standing_Calf_Raises", "exacte", ""],
-  "mollets_assis": ["Seated_Calf_Raise", "exacte", ""],
-  "mollets_presse": ["Calf_Press_On_The_Leg_Press_Machine", "exacte", ""],
-  "mollets_smith": ["Smith_Machine_Calf_Raise", "exacte", ""],
-  "crunch": ["Crunches", "exacte", ""],
-  "crunch_machine": ["Ab_Crunch_Machine", "exacte", ""],
-  "crunch_poulie": ["Cable_Crunch", "exacte", ""],
-  "releve_jambes": ["Hanging_Leg_Raise", "exacte", ""],
-  "releve_chaise": ["Knee_Hip_Raise_On_Parallel_Bars", "exacte", ""],
-  "planche": ["Plank", "proche", "la 1re image montre la mise en place, à genoux"],
-  "planche_cote": ["Side_Bridge", "exacte", ""],
-  "russian": ["Russian_Twist", "exacte", ""],
-  "ab_wheel": ["Ab_Roller", "exacte", ""],
-  "rotation": [null, "aucune", ""],
-  "woodchop": ["Standing_Cable_Wood_Chop", "exacte", ""],
-  "mountain": ["Mountain_Climbers", "exacte", ""],
-  "hyperext": ["Hyperextensions_Back_Extensions", "exacte", ""],
-  "lomb_machine": [null, "aucune", ""],
-  "tapis": ["Walking_Treadmill", "proche", "marche sans inclinaison visible"],
-  "tapis_course": ["Running_Treadmill", "exacte", ""],
-  "velo": ["Bicycling_Stationary", "exacte", ""],
-  "velo_couche": ["Recumbent_Bike", "exacte", ""],
-  "biking": ["Bicycling_Stationary", "proche", "vélo d'appartement au lieu du vélo de biking"],
-  "elliptique": ["Elliptical_Trainer", "exacte", ""],
-  "rameur": ["Rowing_Stationary", "exacte", ""],
-  "stairmaster": ["Stairmaster", "exacte", ""],
-  "skierg": [null, "aucune", ""],
-  "airbike": [null, "aucune", ""],
-  "corde": ["Rope_Jumping", "exacte", ""],
-  "stepper": ["Step_Mill", "proche", "simulateur d'escaliers ; les photos ne montrent pas les pédales"],
-  "kb_swing": ["One-Arm_Kettlebell_Swings", "proche", "à une main au lieu de deux"],
-  "burpees": [null, "aucune", ""],
-  "box_jump": ["Front_Box_Jump", "exacte", ""],
-  "battle_rope": ["Battling_Ropes", "exacte", ""],
-  "sled": ["Sled_Push", "exacte", ""],
-  "wall_ball": [null, "aucune", ""],
-  "thruster": ["Kettlebell_Thruster", "proche", "kettlebells au lieu d'haltères"],
-  "slam_ball": ["Overhead_Slam", "exacte", ""]
+ "_source": "free-exercise-db (github.com/yuhonas/free-exercise-db), licence Unlicense (domaine public), commit f00c92c du 27 septembre 2026",
+ "_format": "id Sporty : [exercice free-exercise-db ou null, exacte | proche | aucune, différence pour « proche », affichage : animée | fixe:0 (1re photo) | fixe:1 (2e photo)]",
+ "dc": [
+  "Barbell_Bench_Press_-_Medium_Grip",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dc_halt": [
+  "Dumbbell_Bench_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dci": [
+  "Incline_Dumbbell_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dci_barre": [
+  "Barbell_Incline_Bench_Press_-_Medium_Grip",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dd_barre": [
+  "Decline_Barbell_Bench_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dc_smith": [
+  "Smith_Machine_Bench_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dci_smith": [
+  "Smith_Machine_Incline_Bench_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dci_convergent": [
+  "Leverage_Incline_Chest_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "chest_press": [
+  "Machine_Bench_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "chest_press_inc": [
+  "Leverage_Incline_Chest_Press",
+  "proche",
+  "machine à disques au lieu d'une machine à charge guidée",
+  "animée"
+ ],
+ "dc_convergent": [
+  "Leverage_Chest_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "pec_deck": [
+  "Butterfly",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "ecarte_halt": [
+  "Dumbbell_Flyes",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "ecarte_inc": [
+  "Incline_Dumbbell_Flyes",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "crossover": [
+  "Cable_Crossover",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "crossover_bas": [
+  "Low_Cable_Crossover",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "pompes": [
+  "Pushups",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dips_pecs": [
+  "Dips_-_Chest_Version",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "pullover": [
+  "Straight-Arm_Dumbbell_Pullover",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "tirage": [
+  "Wide-Grip_Lat_Pulldown",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "tirage_serre": [
+  "Close-Grip_Front_Lat_Pulldown",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "tirage_unilat": [
+  "One_Arm_Lat_Pulldown",
+  "proche",
+  "à la poulie avec une poignée, pas à la machine",
+  "animée"
+ ],
+ "tirage_machine": [
+  "Leverage_High_Row",
+  "proche",
+  "machine « high row » : on tire un peu plus vers l'avant",
+  "fixe:1"
+ ],
+ "traction": [
+  "Pullups",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "traction_assist": [
+  "Band_Assisted_Pull-Up",
+  "proche",
+  "aidé par un élastique au lieu de la machine",
+  "animée"
+ ],
+ "row": [
+  "Seated_Cable_Rows",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "row_machine": [
+  "Leverage_Iso_Row",
+  "proche",
+  "machine à disques au lieu d'une machine à charge guidée",
+  "animée"
+ ],
+ "row_convergent": [
+  "Leverage_Iso_Row",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "row_barre": [
+  "Bent_Over_Barbell_Row",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "row_halt": [
+  "One-Arm_Dumbbell_Row",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "row_t": [
+  "Lying_T-Bar_Row",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "row_trx": [
+  "Inverted_Row_with_Straps",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "pullover_poulie": [
+  "Straight-Arm_Pulldown",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "sdt": [
+  "Barbell_Deadlift",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "sdt_trapbar": [
+  "Trap_Bar_Deadlift",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "shrug_halt": [
+  "Dumbbell_Shrug",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "shrug_barre": [
+  "Barbell_Shrug",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "shrug_smith": [
+  "Barbell_Shrug",
+  "proche",
+  "barre libre au lieu de la Smith machine",
+  "animée"
+ ],
+ "dm_halt": [
+  "Dumbbell_Shoulder_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dm_barre": [
+  "Standing_Military_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "shoulder_press": [
+  "Machine_Shoulder_Military_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dm_smith": [
+  "Smith_Machine_Overhead_Shoulder_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "arnold": [
+  "Arnold_Dumbbell_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "lat": [
+  "Side_Lateral_Raise",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "lat_poulie": [
+  "Side_Lateral_Raise",
+  "proche",
+  "aux haltères au lieu de la poulie",
+  "animée"
+ ],
+ "lat_machine": [
+  "Side_Lateral_Raise",
+  "proche",
+  "aux haltères au lieu de la machine",
+  "animée"
+ ],
+ "front_raise": [
+  "Front_Dumbbell_Raise",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "front_raise_poulie": [
+  "Front_Cable_Raise",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "oiseau": [
+  "Seated_Bent-Over_Rear_Delt_Raise",
+  "proche",
+  "assis penché au bout du banc, pas debout",
+  "animée"
+ ],
+ "rear_delt": [
+  "Reverse_Machine_Flyes",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "face_pull": [
+  "Face_Pull",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "upright_row": [
+  "Upright_Barbell_Row",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl": [
+  "Dumbbell_Bicep_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_barre": [
+  "Barbell_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_ez": [
+  "EZ-Bar_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_marteau": [
+  "Hammer_Curls",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_incline": [
+  "Incline_Dumbbell_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_pupitre": [
+  "Machine_Preacher_Curls",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_poulie": [
+  "Standing_Biceps_Cable_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_concentre": [
+  "Concentration_Curls",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "curl_machine": [
+  "Machine_Bicep_Curl",
+  "proche",
+  "machine où les coudes sont à hauteur d'épaules",
+  "animée"
+ ],
+ "tri": [
+  "Triceps_Pushdown",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "tri_corde": [
+  "Triceps_Pushdown_-_Rope_Attachment",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "tri_overhead": [
+  "Cable_Rope_Overhead_Triceps_Extension",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "barre_front": [
+  "EZ-Bar_Skullcrusher",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "tri_halt_tete": [
+  "Seated_Triceps_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "kickback": [
+  "Tricep_Dumbbell_Kickback",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dips": [
+  "Dips_-_Triceps_Version",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "dips_machine": [
+  "Dip_Machine",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dc_serre": [
+  "Close-Grip_Barbell_Bench_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "dips_banc": [
+  "Bench_Dips",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "wrist_curl": [
+  "Seated_Palm-Up_Barbell_Wrist_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "reverse_curl": [
+  "Reverse_Barbell_Curl",
+  "proche",
+  "barre droite au lieu de la barre EZ",
+  "animée"
+ ],
+ "farmer": [
+  "Farmers_Walk",
+  "proche",
+  "poignées de strongman au lieu d'haltères",
+  "fixe:1"
+ ],
+ "presse": [
+  "Leg_Press",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "presse_horiz": [
+  "Leg_Press",
+  "proche",
+  "presse inclinée à 45° au lieu d'horizontale",
+  "animée"
+ ],
+ "squat": [
+  "Barbell_Squat",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "squat_smith": [
+  "Smith_Machine_Squat",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "hack_squat": [
+  "Hack_Squat",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "front_squat": [
+  "Front_Barbell_Squat",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "goblet": [
+  "Goblet_Squat",
+  "proche",
+  "avec une kettlebell au lieu d'un haltère",
+  "animée"
+ ],
+ "legext": [
+  "Leg_Extensions",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "legext_poulie": [
+  "Single-Leg_Leg_Extension",
+  "proche",
+  "à la machine, une jambe, au lieu de la poulie",
+  "animée"
+ ],
+ "sissy": [
+  "Weighted_Sissy_Squat",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "fentes": [
+  "Dumbbell_Lunges",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "fentes_marchees": [
+  "Barbell_Walking_Lunge",
+  "proche",
+  "barre sur les épaules au lieu d'haltères",
+  "animée"
+ ],
+ "bulgare": [
+  "Split_Squat_with_Dumbbells",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "step_up": [
+  "Dumbbell_Step_Ups",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "legcurl": [
+  "Lying_Leg_Curls",
+  "exacte",
+  "",
+  "fixe:1"
+ ],
+ "legcurl_assis": [
+  "Seated_Leg_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "legcurl_debout": [
+  "Standing_Leg_Curl",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "legcurl_poulie": [
+  "Standing_Leg_Curl",
+  "proche",
+  "à la machine au lieu de la poulie",
+  "animée"
+ ],
+ "sdt_roumain": [
+  "Romanian_Deadlift",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "sdt_roumain_halt": [
+  "Stiff-Legged_Dumbbell_Deadlift",
+  "proche",
+  "jambes presque tendues",
+  "animée"
+ ],
+ "good_morning": [
+  "Good_Morning",
+  "exacte",
+  "",
+  "fixe:1"
+ ],
+ "hip": [
+  "Barbell_Hip_Thrust",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "hip_machine": [
+  "Barbell_Hip_Thrust",
+  "proche",
+  "barre libre au lieu de la machine",
+  "animée"
+ ],
+ "hip_smith": [
+  "Barbell_Hip_Thrust",
+  "proche",
+  "barre libre au lieu de la Smith machine",
+  "animée"
+ ],
+ "glute_bridge": [
+  "Butt_Lift_Bridge",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "kickback_poulie": [
+  "One-Legged_Cable_Kickback",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "glute_machine": [
+  "Glute_Kickback",
+  "proche",
+  "au sol, sans machine",
+  "animée"
+ ],
+ "abducteurs": [
+  "Thigh_Abductor",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "abduc_poulie": [
+  "Thigh_Abductor",
+  "proche",
+  "assis à la machine au lieu de debout à la poulie",
+  "animée"
+ ],
+ "sdt_sumo": [
+  "Sumo_Deadlift",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "adducteurs": [
+  "Thigh_Adductor",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "adduc_poulie": [
+  "Cable_Hip_Adduction",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "mollets_debout": [
+  "Standing_Calf_Raises",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "mollets_assis": [
+  "Seated_Calf_Raise",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "mollets_presse": [
+  "Calf_Press_On_The_Leg_Press_Machine",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "mollets_smith": [
+  "Smith_Machine_Calf_Raise",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "crunch": [
+  "Crunches",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "crunch_machine": [
+  "Ab_Crunch_Machine",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "crunch_poulie": [
+  "Cable_Crunch",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "releve_jambes": [
+  "Hanging_Leg_Raise",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "releve_chaise": [
+  "Knee_Hip_Raise_On_Parallel_Bars",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "planche": [
+  "Plank",
+  "proche",
+  "la 1re image montre la mise en place, à genoux",
+  "fixe:1"
+ ],
+ "planche_cote": [
+  "Side_Bridge",
+  "exacte",
+  "",
+  "fixe:1"
+ ],
+ "russian": [
+  "Russian_Twist",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "ab_wheel": [
+  "Ab_Roller",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "rotation": [
+  null,
+  "aucune",
+  "",
+  ""
+ ],
+ "woodchop": [
+  "Standing_Cable_Wood_Chop",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "mountain": [
+  "Mountain_Climbers",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "hyperext": [
+  "Hyperextensions_Back_Extensions",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "lomb_machine": [
+  "Hyperextensions_Back_Extensions",
+  "proche",
+  "au banc à 45° au lieu de la machine",
+  "animée"
+ ],
+ "tapis": [
+  "Walking_Treadmill",
+  "proche",
+  "marche sans inclinaison visible",
+  "fixe:0"
+ ],
+ "tapis_course": [
+  "Running_Treadmill",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "velo": [
+  "Bicycling_Stationary",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "velo_couche": [
+  "Recumbent_Bike",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "biking": [
+  "Bicycling_Stationary",
+  "proche",
+  "vélo d'appartement au lieu du vélo de biking",
+  "fixe:0"
+ ],
+ "elliptique": [
+  "Elliptical_Trainer",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "rameur": [
+  "Rowing_Stationary",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "stairmaster": [
+  "Stairmaster",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "skierg": [
+  null,
+  "aucune",
+  "",
+  ""
+ ],
+ "airbike": [
+  null,
+  "aucune",
+  "",
+  ""
+ ],
+ "corde": [
+  "Rope_Jumping",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "stepper": [
+  "Stairmaster",
+  "proche",
+  "simulateur d'escaliers au lieu du stepper",
+  "fixe:0"
+ ],
+ "kb_swing": [
+  "One-Arm_Kettlebell_Swings",
+  "proche",
+  "à une main au lieu de deux",
+  "animée"
+ ],
+ "burpees": [
+  null,
+  "aucune",
+  "",
+  ""
+ ],
+ "box_jump": [
+  "Front_Box_Jump",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "battle_rope": [
+  "Battling_Ropes",
+  "exacte",
+  "",
+  "animée"
+ ],
+ "sled": [
+  "Sled_Push",
+  "exacte",
+  "",
+  "fixe:0"
+ ],
+ "wall_ball": [
+  null,
+  "aucune",
+  "",
+  ""
+ ],
+ "thruster": [
+  "Kettlebell_Thruster",
+  "proche",
+  "kettlebells au lieu d'haltères",
+  "animée"
+ ],
+ "slam_ball": [
+  "Overhead_Slam",
+  "exacte",
+  "",
+  "animée"
+ ]
 }

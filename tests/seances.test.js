@@ -190,7 +190,7 @@ test('F6 · sauvegarde puis import, avec séances perso et dates prévues',async
   a.run(`demarrerSeance('${id}');S.draft.sets.curl_ez[0].done=true;terminerSeance();`);
   const txt=a.run('contenuSauvegarde()');
   const o=JSON.parse(txt);
-  assert.equal(o.version,5);assert.equal(o.modeles.length,1);assert.equal(o.prevues.length,2);
+  assert.equal(o.version,6);assert.equal(o.modeles.length,1);assert.equal(o.prevues.length,2);
   // nouvelle appli vide, import « Tout remplacer »
   const b=await ouvrirAppli();
   await importer(b,txt,true);

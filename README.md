@@ -29,6 +29,9 @@ Pas de framework, pas d'étape de compilation : les fichiers du dépôt sont ceu
 | `js/outils.js` | Icônes, petites fonctions, thème, minuteur de repos |
 | `js/exercices.js` | Banque d'exercices, séances A et B, options de jours |
 | `js/alternatives.js` | Schéma de mouvement et alternatives de chaque exercice |
+| `js/illustrations.js` | Photos des exercices : liste générée (type, image fixe, taille) |
+| `js/photos.js` | Affichage des photos animées, mes photos, mise en cache hors connexion |
+| `images/exos/` | Photos WebP des exercices (free-exercise-db, domaine public) |
 | `js/stockage.js` | État de l'appli et enregistrement (IndexedDB, secours localStorage) |
 | `js/sauvegarde.js` | Fichier de sauvegarde, import, rappel des 30 jours |
 | `js/visuels.js` | Animations et schémas des muscles |
@@ -66,6 +69,21 @@ npm run e2e
 ```
 
 Rejoue les parcours dans un iPhone simulé (nécessite Playwright).
+
+## Illustrations
+
+- Photos de free-exercise-db (domaine public). Correspondance et choix « animée / fixe » dans
+  `outils/animations.json`, version lisible dans `ANIMATIONS.md`.
+- Pour régénérer les images et `js/illustrations.js` après une modification :
+
+```bash
+python3 -I outils/images-exos.py <dossier de free-exercise-db>
+```
+
+- Les images des exercices de mes séances sont gardées pour le hors connexion dès l'ouverture ;
+  les autres la première fois qu'elles s'affichent.
+- Mes photos (fiche d'un exercice → « Ajouter mes photos ») sont réduites et gardées sur le téléphone,
+  et incluses dans la sauvegarde si la case « Inclure mes photos » est cochée.
 
 ## Alternatives
 
