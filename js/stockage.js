@@ -130,3 +130,7 @@ const Store={
     await this.moteur.remplacer(d);
   }
 };
+
+/* Enregistre la séance en cours peu après chaque saisie (charge, répétitions). */
+let draftTimer=null;
+function saveDraftSoon(){clearTimeout(draftTimer);draftTimer=setTimeout(()=>Store.saveDraft(),900);}

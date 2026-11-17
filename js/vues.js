@@ -43,7 +43,7 @@ function viewSemaine(){
     hero=`<section class="card hero ${S.draft.type==='B'?'B':''}"><div class="eyebrow">Séance en cours</div><h2>${p.title}</h2><ul>${(S.draft.list||[]).map(id=>EX[id]?`<li>${esc(EX[id].name)}</li>`:'').join('')}</ul><a class="btn block" href="#seance">Reprendre la séance</a>${stripes()}</section>`;
   }else if(next){
     const p=PLANS[next],dayIdx=Object.keys(opt.days).find(k=>opt.days[k]===next);
-    hero=`<section class="card hero ${next}"><div class="eyebrow">Prochaine séance · prévue ${DAYS_LONG[dayIdx-1]}</div><h2>${p.title}</h2><div style="font-weight:600;opacity:.9">${p.sub} · environ 45 min + 20 min de tapis</div><ul>${p.ex.map(id=>`<li>${esc(EX[id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
+    hero=`<section class="card hero ${next}"><div class="eyebrow">Prochaine séance · prévue ${DAYS_LONG[dayIdx-1]}</div><h2>${p.title}</h2><div style="font-weight:600;opacity:.9">${p.sub} · environ 45 min + 20 min de tapis</div><ul>${planEx(next).map(id=>`<li>${esc(EX[id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
   }else{
     hero=`<section class="card hero done"><div class="eyebrow">Semaine</div><h2>Salle validée !</h2><div style="font-weight:600;opacity:.9">${st.five?'Les 2 séances et le Five sont faits. Repos et marche jusqu\'à lundi.':'Les 2 séances sont faites. Il reste le Five vendredi.'}</div>${stripes()}</section>`;
   }
@@ -152,7 +152,7 @@ function exCard(id){
     </div>
     <p class="hint ${sg.up?'up':''}">${esc(sg.txt)}</p>
     <div class="sets">${rows}</div>
-    <div class="ex-actions"><button class="btn sm ghost" data-act="addset" data-ex="${id}">${I.plus} Série</button>${sets.length>1?`<button class="btn sm ghost" data-act="rmset" data-ex="${id}">− Série</button>`:''}<div class="spacer"></div><button class="btn sm ghost" data-act="altsheet" data-ex="${id}">${I.swap} Alternative${nAlt?` (${nAlt})`:''}</button></div>
+    <div class="ex-actions"><button class="btn sm ghost" data-act="addset" data-ex="${id}">${I.plus} Série</button><button class="btn sm ghost" data-act="rmset" data-ex="${id}" ${sets.length>1?'':'disabled'}>− Série</button><button class="btn sm ghost" data-act="altsheet" data-ex="${id}">${I.swap} Alternative${nAlt?` (${nAlt})`:''}</button><button class="btn sm ghost rm" data-act="rmex" data-ex="${id}" aria-label="Retirer ${esc(e.name)} de la séance">${I.trash} Retirer</button></div>
   </section>`;
 }
 function migrateDraft(d){
@@ -176,7 +176,7 @@ function viewSeance(){
 }
 function startSession(type){
   if(S.draft){location.hash='seance';return;}
-  const list=PLANS[type].ex.slice();if(type!=='L')list.push('tapis');
+  const list=planEx(type).slice();if(type!=='L'&&!list.includes('tapis'))list.push('tapis');
   const sets={};list.forEach(id=>{sets[id]=initSets(id);});
   if(type!=='L'){const thu=new Date().getDay()===4;if(S.settings.plan==='3'&&thu&&type==='B')sets.tapis[0].w='9';}
   S.draft={type,start:Date.now(),list,sets};
@@ -222,7 +222,6 @@ function altSheet(id){
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Alternative</div><h2 class="title-l">Remplacer ${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     ${a.length?`<div class="stack" style="gap:0"><div class="pick-sec">Tes alternatives</div>${a.map(x=>bankRow(x,'swapto',id)).join('')}</div>`:'<p class="small muted" style="margin:0">Tu n\'as pas encore d\'alternative pour cet exercice. Celle que tu choisis sera gardée pour la prochaine fois.</p>'}
     <button class="btn ghost block" data-act="pickswap" data-ex="${id}">${I.search} Choisir dans la banque d'exos</button>
-    <button class="btn danger block" data-act="rmex" data-ex="${id}">${I.trash} Retirer de la séance</button>
     <p class="small muted" style="margin:0">Si tu as déjà validé des séries, l'alternative s'ajoute juste après et les séries faites sont gardées.</p>`);
 }
 
@@ -230,24 +229,26 @@ function altSheet(id){
 function bankRow(id,act,from){
   const e=EX[id];if(!e)return '';
   const n=alts(id).length;
-  return `<button class="bank-row" data-act="${act||'exinfo'}" data-ex="${id}"${from?` data-from="${from}"`:''}><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(GROUPS[e.group]||'')} · ${esc(e.equip)}${e.custom?' · perso':''}</span></span>${n&&!act?`<span class="tag">${n} alt.</span>`:''}</button>`;
+  return `<button class="bank-row" data-act="${act||'exinfo'}" data-ex="${id}"${from?` data-from="${from}"`:''}><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(GROUPS[e.group]||'')} · ${esc(e.equip)}${e.custom?' · perso':''}</span></span>${isHidden(id)&&!act?`<span class="tag off">masqué</span>`:n&&!act?`<span class="tag">${n} alt.</span>`:''}</button>`;
 }
-function filterIds(q,g){
+function filterIds(q,g,withHidden){
   const nq=norm(q.trim());
-  return Object.keys(EX).filter(id=>{const e=EX[id];if(g!=='all'&&e.group!==g)return false;if(!nq)return true;return norm(e.name+' '+e.equip+' '+e.muscles.join(' ')+' '+(GROUPS[e.group]||'')).includes(nq);});
+  return Object.keys(EX).filter(id=>{const e=EX[id];if(!withHidden&&isHidden(id))return false;if(g!=='all'&&e.group!==g)return false;if(!nq)return true;return norm(e.name+' '+e.equip+' '+e.muscles.join(' ')+' '+(GROUPS[e.group]||'')).includes(nq);});
 }
 function bankListHTML(){
-  const ids=filterIds(S.bankQ,S.bankG);
+  const ids=filterIds(S.bankQ,S.bankG,S.showHidden);
   if(!ids.length)return `<div class="empty">Aucun exercice trouvé. Tu peux le créer avec « Créer un exercice ».</div>`;
   return Object.keys(GROUPS).map(g=>{const gi=ids.filter(id=>EX[id].group===g);if(!gi.length)return '';return `<section class="card bank-group"><h3>${GROUPS[g]} <span>${gi.length}</span></h3>${gi.map(id=>bankRow(id)).join('')}</section>`;}).join('');
 }
 function viewExos(){
-  const total=Object.keys(EX).length;
-  const counts={};Object.values(EX).forEach(e=>counts[e.group]=(counts[e.group]||0)+1);
+  const vis=Object.keys(EX).filter(id=>S.showHidden||!isHidden(id)),total=vis.length;
+  const nHid=Object.keys(EX).filter(isHidden).length;
+  const counts={};vis.forEach(id=>counts[EX[id].group]=(counts[EX[id].group]||0)+1);
   return `<div class="head-row"><div><div class="eyebrow">${total} exercices</div><h1 class="title-xl">Banque d'exos</h1></div><button class="icon-btn" data-act="newex">${I.plus}<span>Créer</span></button></div>
   ${S.draft?`<p class="small muted" style="margin:0">Touche un exercice pour l'ajouter à ta séance en cours.</p>`:''}
   <label class="search">${I.search}<input id="bankq" type="search" placeholder="Chercher : poulie, fessiers, presse…" value="${esc(S.bankQ)}" aria-label="Chercher un exercice"></label>
   <div class="chips" role="tablist"><button class="chip ${S.bankG==='all'?'on':''}" data-act="bankg" data-g="all">Tous</button>${Object.keys(GROUPS).map(g=>`<button class="chip ${S.bankG===g?'on':''}" data-act="bankg" data-g="${g}">${GROUPS[g]} · ${counts[g]||0}</button>`).join('')}</div>
+  ${nHid?`<button class="btn sm ghost" data-act="togglehidden" aria-pressed="${!!S.showHidden}">${S.showHidden?'Cacher les exercices masqués':`Voir les exercices masqués (${nHid})`}</button>`:''}
   <div id="bankList" class="stack">${bankListHTML()}</div>`;
 }
 function exInfo(id){
@@ -262,13 +263,15 @@ function exInfo(id){
     ${a.length?a.map(x=>`<div class="alt-row"><span class="nm">${esc(EX[x].name)}<br><span class="small muted">${esc(EX[x].equip)}</span></span>${S.draft&&inDraft?`<button class="btn sm ghost" data-act="swapto" data-ex="${x}" data-from="${id}">Faire à la place</button>`:''}<button class="x" data-act="rmalt" data-ex="${x}" data-from="${id}" aria-label="Retirer ${esc(EX[x].name)} des alternatives">${I.trash}</button></div>`).join(''):'<p class="small muted" style="margin:4px 0 8px">Ajoute les exercices que tu peux faire à la place quand la machine est prise.</p>'}
     <button class="btn ghost block" data-act="pickalt" data-ex="${id}" style="margin-top:8px">${I.plus} Ajouter une alternative</button>
   </div>
+  ${id==='tapis'?'':isHidden(id)?`<button class="btn ghost block" data-act="unhide" data-ex="${id}">${I.eye} Réafficher dans la banque</button>`:`<button class="btn ghost block" data-act="hide" data-ex="${id}">${I.eyeoff} Masquer de la banque</button>`}
+  <p class="small muted" style="margin:-4px 0 0">${isHidden(id)?'Cet exercice est masqué : il n\'apparaît plus dans la banque ni dans les suggestions.':'Pour un exercice que tu ne fais jamais ou qui n\'existe pas dans ta salle. Tes séances passées ne changent pas.'}</p>
   ${e.custom?`<button class="btn danger block" data-act="delcustom" data-ex="${id}">${I.trash} Supprimer cet exercice perso</button>`:''}`);
 }
 /* Picker */
 let picker=null;
 function openPicker(ctx){
   picker=Object.assign({q:'',g:'all'},ctx);
-  const t=ctx.mode==='addalt'?`Alternative à ${EX[ctx.for].name}`:ctx.mode==='swap'?`Remplacer ${EX[ctx.for].name}`:'Ajouter un exercice';
+  const t=ctx.mode==='addalt'?`Alternative à ${EX[ctx.for].name}`:ctx.mode==='swap'?`Remplacer ${EX[ctx.for].name}`:ctx.mode==='prog'?`Ajouter à la séance ${ctx.t}`:'Ajouter un exercice';
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Banque d'exos</div><h2 class="title-l">${esc(t)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     <label class="search">${I.search}<input id="pickq" type="search" placeholder="Chercher un exercice" aria-label="Chercher un exercice" data-autofocus></label>
     <div class="chips"><button class="chip on" data-act="pickg" data-g="all">Tous</button>${Object.keys(GROUPS).map(g=>`<button class="chip" data-act="pickg" data-g="${g}">${GROUPS[g]}</button>`).join('')}</div>
@@ -276,7 +279,8 @@ function openPicker(ctx){
 }
 function pickListHTML(){
   const p=picker;const exclude=new Set(p.for?[p.for].concat(p.mode==='addalt'?alts(p.for):[]):[]);
-  if(S.draft&&p.mode!=='addalt')S.draft.list.forEach(x=>exclude.add(x));
+  if(p.mode==='prog')planEx(p.t).forEach(x=>exclude.add(x));
+  else if(S.draft&&p.mode!=='addalt')S.draft.list.forEach(x=>exclude.add(x));
   let ids=filterIds(p.q,p.g).filter(id=>!exclude.has(id));
   let html='';
   if(p.for&&!p.q&&p.g==='all'){
@@ -309,7 +313,7 @@ function progLabel(id){const m=(EX[id]||{}).mode;return m==='time'?['Minutes par
 function viewHistorique(){
   const ses=sortedSessions();
   const used=[];ses.forEach(s=>{if(s.ex)Object.keys(s.ex).forEach(id=>{if(EX[id]&&!used.includes(id))used.push(id);});});
-  const ids=used.length?used:PLANS.A.ex.concat(PLANS.B.ex);
+  const ids=used.length?used:planEx('A').concat(planEx('B'));
   if(!S.histEx||!ids.includes(S.histEx))S.histEx=ids[0];
   const cur=S.histEx,[lab,unit]=progLabel(cur);
   const pts=ses.filter(s=>s.ex&&s.ex[cur]).map(s=>({x:pkey(s.date).getTime(),y:progValue(cur,s.ex[cur])}));
@@ -392,6 +396,9 @@ function viewReglages(){
   </section>
   <section class="card stack"><h2 class="title-m">Objectif de poids</h2>
     <label class="fld" style="max-width:200px"><input id="goal" inputmode="decimal" value="${esc(fmt(num(S.settings.goal)||72))}" aria-label="Objectif en kg"><span>kg</span></label></section>
+  <section class="card stack"><h2 class="title-m">Mon programme</h2>
+    <p class="small muted" style="margin:0">Choisis les exercices des séances A et B et leur ordre.</p>
+    <a class="btn ghost block" href="#programme">Modifier mes séances A et B</a></section>
   <section class="card stack"><h2 class="title-m">Mes vidéos</h2>
     <p class="small muted" style="margin:0">Par défaut, « Voir la vidéo » ouvre une recherche YouTube en français. Pour garder une vidéo précise, colle son lien ici.</p>
     <select class="sel" id="vidsel" aria-label="Exercice">${Object.keys(EX).sort((a,b)=>EX[a].name.localeCompare(EX[b].name,'fr')).map(id=>`<option value="${id}">${esc(EX[id].name)}${(S.settings.videos||{})[id]?' ✓':''}</option>`).join('')}</select>
@@ -405,6 +412,27 @@ function viewReglages(){
     <button class="btn ghost block" data-act="openimport">Importer une sauvegarde</button>
     <p class="small muted" style="margin:0">La sauvegarde crée un fichier : choisis « Enregistrer dans Fichiers », puis iCloud Drive pour le garder en lieu sûr. Sporty te le rappelle si ta dernière sauvegarde date de plus de ${RAPPEL_JOURS} jours.</p>
   </section>`;
+}
+
+/* ---------- Mon programme ---------- */
+function viewProgramme(){
+  const t=S.progT||'A',list=planEx(t),p=PLANS[t];
+  const modif=!!(S.settings.programme&&S.settings.programme[t]);
+  const rows=list.map((id,i)=>{const e=EX[id];return `<div class="prog-row">
+    <span class="prog-n">${i+1}</span>
+    <button class="prog-nm" data-act="exinfo" data-ex="${id}"><b>${esc(e.name)}</b><br><span class="small muted">${presc(id)} · ${esc(e.equip)}</span></button>
+    <button class="x" data-act="progup" data-i="${i}" ${i===0?'disabled':''} aria-label="Monter ${esc(e.name)}">${I.up}</button>
+    <button class="x" data-act="progdown" data-i="${i}" ${i===list.length-1?'disabled':''} aria-label="Descendre ${esc(e.name)}">${I.down}</button>
+    <button class="x" data-act="progrm" data-i="${i}" aria-label="Retirer ${esc(e.name)} de la séance ${t}">${I.trash}</button></div>`;}).join('');
+  return `<div><a class="link small" href="#reglages">← Réglages</a><div class="eyebrow" style="margin-top:8px">Réglages</div><h1 class="title-xl">Mon programme</h1></div>
+  <div class="seg seg2" role="tablist">${['A','B'].map(k=>`<button role="tab" aria-selected="${t===k}" class="${t===k?'on':''}" data-act="progt" data-v="${k}">Séance ${k}</button>`).join('')}</div>
+  <section class="card stack">
+    <div><h2 class="title-m">${esc(p.title)}</h2><p class="small muted" style="margin:2px 0 0">${esc(p.sub)}</p></div>
+    ${rows?`<div class="prog-list">${rows}</div>`:'<div class="empty">Aucun exercice dans cette séance.</div>'}
+    <button class="btn ghost block" data-act="progadd">${I.plus} Ajouter un exercice</button>
+    <p class="small muted" style="margin:0">Les 20 min de tapis incliné s'ajoutent toujours à la fin.${S.draft?' La séance en cours ne change pas : tes modifications comptent dès la prochaine.':''} Tes séances passées restent intactes dans l'historique.</p>
+  </section>
+  ${modif?`<button class="btn ghost block" data-act="progreset">Revenir à la séance ${t} d'origine</button>`:''}`;
 }
 
 /* ---------- Five ---------- */

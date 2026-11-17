@@ -1,12 +1,12 @@
 'use strict';
 /* ---------- Render ---------- */
 function renderTabs(){
-  const active=S.route==='mois'?'semaine':S.route;
+  const active=S.route==='mois'?'semaine':S.route==='programme'?'reglages':S.route;
   $('#tabs').innerHTML=TABS.map(r=>`<a href="#${r}" class="${active===r?'on':''}" ${active===r?'aria-current="page"':''}>${I['tab_'+r]}<span>${TAB_LABEL[r]}</span></a>`).join('');
 }
 function render(){
   const v=$('#view');
-  const map={semaine:viewSemaine,seance:viewSeance,exos:viewExos,historique:viewHistorique,poids:viewPoids,reglages:viewReglages,mois:viewCalendrier};
+  const map={semaine:viewSemaine,seance:viewSeance,exos:viewExos,historique:viewHistorique,poids:viewPoids,reglages:viewReglages,mois:viewCalendrier,programme:viewProgramme};
   v.innerHTML=(map[S.route]||viewSemaine)();
   renderTabs();applyTheme();
 }
@@ -107,7 +107,22 @@ document.addEventListener('click',e=>{
       const name=$('#nxname').value.trim();if(!name){toast('Donne un nom à l\'exercice.');$('#nxname').focus();return;}
       const c={id:'c_'+uid(),name,group:$('#nxgroup').value,equip:$('#nxequip').value.trim()||'Perso',mode:$('#nxmode').value};
       S.settings.custom=(S.settings.custom||[]).concat([c]);Store.saveSettings();buildEx();closeModal();render();toast('Exercice créé');exInfo(c.id);break;}
-    case 'delcustom':confirmBox('Supprimer cet exercice ?','Il disparaîtra de ta banque. Tes séances passées restent dans l\'historique.','Supprimer',()=>{S.settings.custom=(S.settings.custom||[]).filter(c=>c.id!==id);Store.saveSettings();buildEx();render();},true);break;
+    case 'delcustom':confirmBox('Supprimer cet exercice ?','Il disparaîtra de ta banque et de ton programme. Tes séances passées restent dans l\'historique.','Supprimer',()=>{
+      const st=S.settings;st.custom=(st.custom||[]).filter(c=>c.id!==id);
+      if(st.programme)for(const k in st.programme)st.programme[k]=st.programme[k].filter(x=>x!==id);
+      if(st.alts){delete st.alts[id];for(const k in st.alts)st.alts[k]=st.alts[k].filter(x=>x!==id);}
+      st.hidden=(st.hidden||[]).filter(x=>x!==id);
+      Store.saveSettings();buildEx();render();toast('Exercice supprimé');},true);break;
+    /* masquer */
+    case 'hide':setHidden(id,true);closeModal();render();toast(`${EX[id].name} masqué`);break;
+    case 'unhide':setHidden(id,false);closeModal();render();toast(`${EX[id].name} réaffiché`);break;
+    case 'togglehidden':S.showHidden=!S.showHidden;render();break;
+    /* mon programme */
+    case 'progt':S.progT=el.dataset.v;render();break;
+    case 'progup':case 'progdown':{const t=S.progT||'A',l=planEx(t).slice(),i=+el.dataset.i,j=a==='progup'?i-1:i+1;if(j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];setPlanEx(t,l);render();break;}
+    case 'progrm':{const t=S.progT||'A',l=planEx(t).slice(),i=+el.dataset.i,nm=EX[l[i]].name;l.splice(i,1);setPlanEx(t,l);render();toast(`${nm} retiré de la séance ${t}`);break;}
+    case 'progadd':openPicker({mode:'prog',t:S.progT||'A'});break;
+    case 'progreset':{const t=S.progT||'A';confirmBox(`Revenir à la séance ${t} d'origine ?`,'Ta liste d\'exercices modifiée sera remplacée par celle du départ.','Revenir à l\'origine',()=>{const p=Object.assign({},S.settings.programme);delete p[t];S.settings.programme=p;Store.saveSettings();render();},true);break;}
     case 'addtosession':addToSession(id);closeModal();toast(`${EX[id].name} ajouté à la séance`);location.hash='seance';setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},120);break;
     case 'pickalt':openPicker({mode:'addalt',for:id});break;
     case 'pickswap':openPicker({mode:'swap',for:id});break;
@@ -117,6 +132,7 @@ document.addEventListener('click',e=>{
       const p=picker;
       if(p.mode==='addalt'){addAlt(p.for,id);toast('Alternative ajoutée');exInfo(p.for);}
       else if(p.mode==='swap'){if(swapEx(p.for,id)!==false){addAlt(p.for,id);closeModal();render();toast(`${EX[id].name} à la place de ${EX[p.for].name}`);}}
+      else if(p.mode==='prog'){setPlanEx(p.t,planEx(p.t).concat(id));closeModal();render();toast(`${EX[id].name} ajouté à la séance ${p.t}`);}
       else{addToSession(id);closeModal();render();setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}
       break;}
     case 'swapto':{const from=el.dataset.from;if(swapEx(from,id)!==false){closeModal();if(S.route!=='seance')location.hash='seance';else render();toast(`${EX[id].name} à la place de ${EX[from].name}`);}break;}

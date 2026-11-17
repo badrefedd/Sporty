@@ -487,3 +487,20 @@ svg.mmap .hlf{fill:var(--accent)}
 .nudge .x{width:30px;height:30px}
 .btn svg{width:18px;height:18px;vertical-align:-3px}
 details summary{list-style-position:inside}
+
+/* ---------- v3 : retirer, masquer, mon programme ---------- */
+.ex-actions{flex-wrap:wrap}
+.ex-actions .rm{color:var(--danger)}
+.bank-row .tag.off{color:var(--muted);background:var(--surface2)}
+.seg button[role=tab]{font-size:15px}
+.prog-list{display:flex;flex-direction:column}
+.prog-row{display:flex;align-items:center;gap:4px;padding:8px 0;border-bottom:1px solid var(--line)}
+.prog-row:last-child{border-bottom:0}
+.prog-n{width:22px;flex:none;font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--accent)}
+.prog-nm{flex:1;min-width:0;border:0;background:none;text-align:left;padding:0;color:var(--ink);font:inherit;line-height:1.25}
+.prog-nm b{font-size:15.5px}
+.prog-row .x{width:38px;height:40px;flex:none}
+.prog-row .x:disabled{opacity:.25}
+.prog-row .x svg{width:20px;height:20px}
+.ex-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ex-actions .btn:disabled{opacity:.4}
