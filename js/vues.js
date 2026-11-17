@@ -1,0 +1,423 @@
+'use strict';
+/* ---------- Views: week ---------- */
+/* Sélecteur « Semaine | Mois », en haut des deux vues. */
+function vueSeg(cur){
+  return `<nav class="seg seg2 vueseg" aria-label="Vue du programme">${[['semaine','Semaine'],['mois','Mois']].map(([k,l])=>`<a href="#${k}" class="${cur===k?'on':''}" ${cur===k?'aria-current="page"':''}>${l}</a>`).join('')}</nav>`;
+}
+function draftBanner(){
+  if(!S.draft||S.route==='seance')return '';
+  const p=PLANS[S.draft.type];const st=new Date(S.draft.start);
+  return `<div class="banner"><span class="badge ${S.draft.type}">${S.draft.type}</span><div><b>${p.title} en cours</b><div class="small muted">Commencée à ${st.getHours()} h ${pad(st.getMinutes())}</div></div><div class="spacer"></div><a class="btn sm primary" href="#seance">Reprendre</a></div>`;
+}
+function stripes(){return `<svg class="stripes" viewBox="0 0 100 100" aria-hidden="true"><path d="M58 4 30 54h18l-9 42 31-56H52l10-36z" fill="#fff"/></svg>`;}
+function activityCard(){
+  const today=dkey(),td=dayData(today);
+  const last7=[];for(let i=0;i<7;i++){const d=dayData(dkey(addDays(new Date(),-i)));if(d&&d.steps!=null)last7.push(d.steps);}
+  const avg=last7.length?last7.reduce((a,b)=>a+b,0)/last7.length:null;
+  const steps=td&&td.steps!=null?td.steps:null,kcal=td&&td.kcal!=null?td.kcal:null;
+  return `<section class="card stack">
+    <div class="row" style="justify-content:space-between"><h2 class="title-m">Activité du jour</h2><button class="btn sm ghost" data-act="day" data-date="${today}">Saisir</button></div>
+    <div class="tiles">
+      <div class="tile"><div class="l">Pas</div><div class="v num">${steps!=null?fmtInt(steps):'–'}</div></div>
+      <div class="tile"><div class="l">Kcal actives</div><div class="v num">${kcal!=null?fmtInt(kcal):'–'}</div></div>
+    </div>
+    <div class="stepbar" role="progressbar" aria-label="Pas du jour vers 10 000" aria-valuemin="0" aria-valuemax="${STEP_GOAL}" aria-valuenow="${steps||0}"><i style="width:${Math.min(100,(steps||0)/STEP_GOAL*100)}%"></i></div>
+    <div class="small muted">${steps==null?'Note tes pas et tes kcal actives de l\'app Forme avec « Saisir ».':`Objectif 8 000 à 10 000 pas.${avg!=null?` Moyenne sur 7 jours : ${fmtInt(avg)} pas.`:''}`}</div>
+  </section>`;
+}
+function viewSemaine(){
+  const ws=weekStart(),opt=WEEK_OPTS[S.settings.plan]||WEEK_OPTS['1'],st=weekStatus(ws),today=dkey();
+  let strip='';
+  for(let i=0;i<7;i++){
+    const d=addDays(ws,i),k=dkey(d),plan=opt.days[i+1];
+    const done=plan&&st[plan];
+    const extra=S.sessions.some(s=>s.date===k&&s.type==='L');
+    strip+=`<button class="day ${k===today?'today':''}" data-act="day" data-date="${k}" aria-label="${DAYS_LONG[i]} ${d.getDate()}"><span class="dname">${DAYS[i]}</span><span class="dnum">${d.getDate()}</span>
+      ${plan?`<span class="badge ${plan}">${plan==='five'?'5':plan}</span>`:extra?`<span class="badge L">L</span>`:`<span class="badge rest">–</span>`}
+      ${plan?`<span class="mark ${done?'done':'todo'}">${done?I.check:''}</span>`:extra?`<span class="mark done">${I.check}</span>`:'<span class="mark"></span>'}</button>`;
+  }
+  const next=!st.A?'A':!st.B?'B':null;
+  let hero;
+  if(S.draft){
+    const p=PLANS[S.draft.type];
+    hero=`<section class="card hero ${S.draft.type==='B'?'B':''}"><div class="eyebrow">Séance en cours</div><h2>${p.title}</h2><ul>${(S.draft.list||[]).map(id=>EX[id]?`<li>${esc(EX[id].name)}</li>`:'').join('')}</ul><a class="btn block" href="#seance">Reprendre la séance</a>${stripes()}</section>`;
+  }else if(next){
+    const p=PLANS[next],dayIdx=Object.keys(opt.days).find(k=>opt.days[k]===next);
+    hero=`<section class="card hero ${next}"><div class="eyebrow">Prochaine séance · prévue ${DAYS_LONG[dayIdx-1]}</div><h2>${p.title}</h2><div style="font-weight:600;opacity:.9">${p.sub} · environ 45 min + 20 min de tapis</div><ul>${p.ex.map(id=>`<li>${esc(EX[id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
+  }else{
+    hero=`<section class="card hero done"><div class="eyebrow">Semaine</div><h2>Salle validée !</h2><div style="font-weight:600;opacity:.9">${st.five?'Les 2 séances et le Five sont faits. Repos et marche jusqu\'à lundi.':'Les 2 séances sont faites. Il reste le Five vendredi.'}</div>${stripes()}</section>`;
+  }
+  const now=new Date(),mStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const monthCount=S.sessions.filter(s=>s.type!=='five'&&s.date&&pkey(s.date)>=mStart).length;
+  const avg7=avgBetween(addDays(pkey(today),-6),pkey(today));
+  const lastW=sortedWeights().slice(-1)[0];
+  const other=next==='A'?'B':'A';
+  return `${draftBanner()}
+  ${vueSeg('semaine')}
+  ${rappelSauvegarde()}
+  <div><div class="eyebrow">Semaine du ${ws.getDate()} ${MONTHS[ws.getMonth()]}</div><h1 class="title-xl">Ton programme</h1></div>
+  <div class="week" role="list" aria-label="Programme de la semaine">${strip}</div>
+  <p class="small muted" style="margin:-6px 0 0">${esc(opt.label)} + Five le vendredi. ${esc(opt.note)}</p>
+  ${hero}
+  ${!S.draft?`<div class="row">
+    <button class="btn ghost" style="flex:1" data-act="start" data-type="${other}"><span class="badge ${other}">${other}</span> Faire la ${other}</button>
+    <button class="btn ghost" style="flex:1" data-act="start" data-type="L"><span class="badge L">L</span> Séance libre</button></div>`:''}
+  <button class="btn ghost block" data-act="five"><span class="badge five">5</span> ${st.five?'Five noté cette semaine':'Noter le Five'}</button>
+  ${activityCard()}
+  <div class="tiles">
+    <a class="tile" href="#mois" style="text-decoration:none;color:inherit"><div class="l">Séances ce mois-ci</div><div class="v num">${monthCount}</div></a>
+    <a class="tile" href="#poids" style="text-decoration:none;color:inherit"><div class="l">Moyenne poids 7 jours</div><div class="v num">${avg7!=null?fmt1(avg7)+'<small>kg</small>':lastW?fmt1(lastW.kg)+'<small>kg</small>':'–'}</div></a>
+  </div>`;
+}
+
+/* ---------- Views: calendar ---------- */
+function viewCalendrier(){
+  if(!S.cal){const n=new Date();S.cal={y:n.getFullYear(),m:n.getMonth()};}
+  const {y,m}=S.cal,first=new Date(y,m,1),last=new Date(y,m+1,0),today=dkey();
+  let d=weekStart(first),cells=DAYS.map(x=>`<div class="dh">${x}</div>`).join('');
+  while(d<=last||(d.getDay()+6)%7!==0){
+    const k=dkey(d),out=d.getMonth()!==m;
+    const ses=S.sessions.filter(s=>s.date===k);
+    const w=S.weights.find(x=>x.date===k),act=dayData(k);
+    cells+=`<button class="cal-cell ${out?'out':''} ${k===today?'today':''}" data-act="day" data-date="${k}" aria-label="${fmtDate(k)}${ses.length?', '+ses.map(s=>typeTitle(s.type)).join(', '):''}">
+      <span class="n">${d.getDate()}${w?'<span class="wd" aria-hidden="true"></span>':''}</span>
+      <span class="mb">${ses.map(s=>`<i class="${s.type}">${typeBadge(s.type)}</i>`).join('')}</span>
+      ${act&&act.steps!=null?`<span class="st">${act.steps>=1000?fmt1(act.steps/1000)+'k':act.steps} pas</span>`:''}</button>`;
+    d=addDays(d,1);
+    if(d>last&&(d.getDay()+6)%7===0)break;
+  }
+  const inM=k=>{const x=pkey(k);return x>=first&&x<=last;};
+  const ms=S.sessions.filter(s=>s.date&&inM(s.date));
+  const gym=ms.filter(s=>s.type!=='five').length,five=ms.filter(s=>s.type==='five').length;
+  const tap=ms.reduce((a,s)=>a+tapisMin(s),0);
+  const md=S.days.filter(x=>inM(x.date));
+  const st=md.filter(x=>x.steps!=null).map(x=>x.steps),kc=md.filter(x=>x.kcal!=null).map(x=>x.kcal);
+  const mw=sortedWeights().filter(x=>inM(x.date));
+  const wd=mw.length>=2?mw[mw.length-1].kg-mw[0].kg:null;
+  return `${vueSeg('mois')}
+  <div class="cal-head"><button class="icon-btn" data-act="calnav" data-d="-1" aria-label="Mois précédent">${I.left}</button>
+    <div style="text-align:center"><div class="eyebrow">Calendrier</div><h1 class="title-l">${MONTHS_LONG[m]} ${y}</h1></div>
+    <button class="icon-btn" data-act="calnav" data-d="1" aria-label="Mois suivant">${I.right}</button></div>
+  <div class="cal">${cells}</div>
+  <div class="legend2"><span><span class="badge A" style="min-width:16px;height:16px;font-size:10px;padding:0 3px;border-radius:4px">A</span>Séance A</span><span><span class="badge B" style="min-width:16px;height:16px;font-size:10px;padding:0 3px;border-radius:4px">B</span>Séance B</span><span><span class="badge L" style="min-width:16px;height:16px;font-size:10px;padding:0 3px;border-radius:4px">L</span>Libre</span><span><span class="badge five" style="min-width:16px;height:16px;font-size:10px;padding:0 3px;border-radius:4px">5</span>Five</span><span><span class="wd" style="width:8px;height:8px;border-radius:50%;background:var(--accent-2);display:inline-block"></span>Pesée</span></div>
+  <h2 class="title-m">Bilan de ${MONTHS_LONG[m]}</h2>
+  <div class="tiles">
+    <div class="tile"><div class="l">Séances de salle</div><div class="v num">${gym}</div></div>
+    <div class="tile"><div class="l">Five</div><div class="v num">${five}</div></div>
+    <div class="tile"><div class="l">Tapis et cardio</div><div class="v num">${fmtInt(tap)}<small>min</small></div></div>
+    <div class="tile"><div class="l">Évolution du poids</div><div class="v num ${wd!=null?(wd<=0?'trend-down':'trend-up'):''}">${wd!=null?(wd>0?'+':'')+fmt1(wd)+'<small>kg</small>':'–'}</div></div>
+    <div class="tile"><div class="l">Pas par jour (moy.)</div><div class="v num">${st.length?fmtInt(st.reduce((a,b)=>a+b,0)/st.length):'–'}</div></div>
+    <div class="tile"><div class="l">Kcal actives par jour</div><div class="v num">${kc.length?fmtInt(kc.reduce((a,b)=>a+b,0)/kc.length):'–'}</div></div>
+  </div>
+  <p class="small muted" style="margin:0">Touche un jour pour voir le détail ou ajouter tes pas et tes kcal.</p>`;
+}
+function daySheet(k){
+  const ses=S.sessions.filter(s=>s.date===k).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const w=S.weights.find(x=>x.date===k),act=dayData(k)||{};
+  const future=k>dkey();
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Journée</div><h2 class="title-l" style="text-transform:capitalize">${fmtDate(k)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+    ${ses.length?ses.map(s=>`<div class="card" style="box-shadow:none;padding:12px"><div class="row"><span class="badge ${s.type}">${typeBadge(s.type)}</span><b>${typeTitle(s.type)}</b><span class="small muted">${s.type==='five'?(s.min||60)+' min':(s.dur||'?')+' min'}</span></div>
+      ${s.ex?`<div class="hist-detail" style="border:0;padding-top:8px">${Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(EX[id]?EX[id].name:id)}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join('')}${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} %</b></div>`:''}</div>`:''}
+      ${s.note?`<div class="small muted">${esc(s.note)}</div>`:''}</div>`).join(''):`<p class="muted" style="margin:0">${future?'Rien de prévu dans l\'historique pour ce jour.':'Pas de séance ce jour-là.'}</p>`}
+    ${w?`<div class="row"><span class="pill">Pesée : ${fmt(w.kg)} kg</span></div>`:''}
+    ${future?'':`<div class="stack" style="gap:8px"><h3 class="title-m">Activité (app Forme)</h3>
+      <div class="row"><label class="fld" style="flex:1"><input id="dsteps" inputmode="numeric" placeholder="0" value="${act.steps!=null?act.steps:''}" aria-label="Nombre de pas"><span>pas</span></label>
+      <label class="fld" style="flex:1"><input id="dkcal" inputmode="numeric" placeholder="0" value="${act.kcal!=null?act.kcal:''}" aria-label="Kcal actives"><span>kcal</span></label></div>
+      <button class="btn primary block" data-act="saveday" data-date="${k}">Enregistrer l'activité</button></div>`}`);
+}
+
+/* ---------- Views: session ---------- */
+function viewChoose(){
+  const st=weekStatus();
+  const c=t=>{const p=PLANS[t];return `<button data-act="start" data-type="${t}"><span class="badge ${t}">${t}</span><b>${p.title}</b><span class="small muted">${p.sub}</span><span class="small">${t==='L'?'Ajoute les exos de ton choix':st[t]?'Faite cette semaine':'À faire cette semaine'}</span></button>`;};
+  return `<div><div class="eyebrow">Séance</div><h1 class="title-xl">Quelle séance ?</h1></div>
+  <div class="choice">${c('A')}${c('B')}</div>
+  <div class="choice">${c('L')}<button data-act="five"><span class="badge five">5</span><b>Five</b><span class="small muted">Foot du vendredi</span><span class="small">${st.five?'Noté cette semaine':'À noter'}</span></button></div>
+  <section class="card stack"><h2 class="title-m">Les règles</h2>
+  <ul class="cues"><li>Repos de 1 min 30 à 2 min sur les gros exercices, 1 min sur les petits. Le minuteur se lance tout seul quand tu valides une série.</li><li>Quand tu atteins le haut de la fourchette sur toutes les séries, Sporty te propose de monter la charge.</li><li>Machine prise ? Touche « Alternative » sur l'exercice.</li><li>Séance ratée : fais celle qui manque à la prochaine occasion, sans rattraper.</li></ul></section>`;
+}
+function exCard(id){
+  const e=EX[id],d=S.draft,sets=d.sets[id]||[],sg=suggest(id),F=fieldsFor(id);
+  const allDone=sets.length&&sets.every(x=>x.done);
+  const nAlt=alts(id).length;
+  const rows=sets.map((x,i)=>`<div class="set ${x.done?'done':''}">
+    <span class="set-n">${i+1}</span>
+    ${F.map(f=>`<label class="fld"><input id="${f.k}-${id}-${i}" data-ex="${id}" data-i="${i}" data-f="${f.k}" inputmode="${f.im}" autocomplete="off" placeholder="0" value="${esc(x[f.k])}" aria-label="${esc(f.label)} série ${i+1}"><span>${esc(f.label)}</span></label>`).join('')}
+    <button class="check" data-act="toggleset" data-ex="${id}" data-i="${i}" aria-label="${x.done?'Annuler':'Valider'} la série ${i+1}" aria-pressed="${x.done}">${I.check}</button></div>`).join('');
+  return `<section class="card ex ${allDone?'complete':''}" id="ex-${id}">
+    <div class="ex-top">
+      <button class="ex-thumb" data-act="exinfo" data-ex="${id}" aria-label="Voir comment faire : ${esc(e.name)}">${visualFor(id)}<span class="play">${I.play}</span></button>
+      <div style="min-width:0"><h3>${esc(e.name)}</h3><p class="presc">${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}${e.perHand?' · kg par haltère':''}${e.note?' · '+esc(e.note):''}</p>
+      ${sg.last?`<p class="last" style="margin-top:4px">Dernière fois : <b>${setsStr(id,sg.last.ex[id])}</b></p>`:''}</div>
+    </div>
+    <p class="hint ${sg.up?'up':''}">${esc(sg.txt)}</p>
+    <div class="sets">${rows}</div>
+    <div class="ex-actions"><button class="btn sm ghost" data-act="addset" data-ex="${id}">${I.plus} Série</button>${sets.length>1?`<button class="btn sm ghost" data-act="rmset" data-ex="${id}">− Série</button>`:''}<div class="spacer"></div><button class="btn sm ghost" data-act="altsheet" data-ex="${id}">${I.swap} Alternative${nAlt?` (${nAlt})`:''}</button></div>
+  </section>`;
+}
+function migrateDraft(d){
+  if(!d)return d;
+  if(!d.list)d.list=Object.keys(d.sets||{});
+  if(d.tapis){if(!d.list.includes('tapis')){d.list.push('tapis');d.sets.tapis=[{r:String(d.tapis.min||'20'),w:String(d.tapis.inc||'11'),done:!!d.tapis.done}];}delete d.tapis;}
+  d.list=d.list.filter(id=>EX[id]);
+  return d;
+}
+function viewSeance(){
+  if(!S.draft)return viewChoose();
+  const d=S.draft,p=PLANS[d.type];
+  const total=d.list.reduce((a,id)=>a+(d.sets[id]||[]).length,0),done=d.list.reduce((a,id)=>a+(d.sets[id]||[]).filter(x=>x.done).length,0);
+  const st=new Date(d.start);
+  return `<div class="session-head"><div><div class="eyebrow">${esc(p.sub)} · depuis ${st.getHours()} h ${pad(st.getMinutes())}</div><h1 class="title-xl"><span class="badge ${d.type}" style="vertical-align:middle;margin-right:6px">${d.type}</span>${p.title}</h1></div><div class="small muted num" style="text-align:right">${done}/${total}<br>séries</div></div>
+  <div class="progress" aria-hidden="true"><i style="width:${total?done/total*100:0}%"></i></div>
+  <div class="row"><button class="btn sm ghost" style="flex:1" data-act="stop">${I.stop} Arrêter et enregistrer</button><button class="btn sm danger" style="flex:1" data-act="abandon">${I.x} Annuler la séance</button></div>
+  ${d.list.length?d.list.map(exCard).join(''):'<div class="empty">Ajoute ton premier exercice avec le bouton ci-dessous.</div>'}
+  <button class="btn ghost block" data-act="addex">${I.plus} Ajouter un exercice</button>
+  <button class="btn primary block" data-act="finish">Terminer la séance</button>`;
+}
+function startSession(type){
+  if(S.draft){location.hash='seance';return;}
+  const list=PLANS[type].ex.slice();if(type!=='L')list.push('tapis');
+  const sets={};list.forEach(id=>{sets[id]=initSets(id);});
+  if(type!=='L'){const thu=new Date().getDay()===4;if(S.settings.plan==='3'&&thu&&type==='B')sets.tapis[0].w='9';}
+  S.draft={type,start:Date.now(),list,sets};
+  Store.saveDraft();
+  if(location.hash==='#seance')render();else location.hash='seance';
+  window.scrollTo(0,0);
+  if(type==='L')setTimeout(()=>openPicker({mode:'add'}),150);
+}
+function finishSession(){
+  const d=S.draft;if(!d)return;
+  const ex={};let n=0,vol=0;
+  d.list.forEach(id=>{const s=(d.sets[id]||[]).filter(x=>x.done).map(x=>({w:num(x.w)||0,r:num(x.r)||0}));if(s.length){ex[id]=s;n+=s.length;if(EX[id].mode==='kg')s.forEach(x=>vol+=x.w*x.r);}});
+  if(!n){toast('Valide au moins une série, ou annule la séance.');return;}
+  const ses={id:uid(),type:d.type,date:dkey(new Date(d.start)),ts:d.start,dur:Math.max(1,Math.round((Date.now()-d.start)/60000)),ex};
+  const records=Object.keys(ex).filter(id=>{if(EX[id].mode!=='kg')return false;const prev=maxEver(id);const best=Math.max(...ex[id].map(x=>x.w));return prev>0&&best>prev;});
+  S.sessions.push(ses);S.draft=null;Timer.stop();
+  Store.saveSession(ses);Store.saveDraft();
+  location.hash='semaine';
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Bien joué</div><h2 class="title-xl">${PLANS[ses.type].title} terminée</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+    <div class="tiles"><div class="tile"><div class="l">Durée</div><div class="v num">${ses.dur}<small>min</small></div></div><div class="tile"><div class="l">Séries</div><div class="v num">${n}</div></div>
+    <div class="tile"><div class="l">Volume soulevé</div><div class="v num">${fmtInt(vol)}<small>kg</small></div></div><div class="tile"><div class="l">Cardio</div><div class="v num">${tapisMin(ses)?tapisMin(ses)+'<small>min</small>':'–'}</div></div></div>
+    ${records.length?`<div class="hint up">Nouveau record : ${records.map(id=>esc(EX[id].name)).join(', ')}</div>`:''}
+    <button class="btn primary block" data-act="close">Fermer</button>`);
+}
+function swapEx(oldId,newId){
+  const d=S.draft;if(!d)return;
+  if(d.list.includes(newId)){toast('Cet exercice est déjà dans la séance.');return false;}
+  const i=d.list.indexOf(oldId);
+  const hasDone=(d.sets[oldId]||[]).some(x=>x.done);
+  if(hasDone)d.list.splice(i+1,0,newId);else{d.list.splice(i,1,newId);delete d.sets[oldId];}
+  d.sets[newId]=initSets(newId);
+  Store.saveDraft();return true;
+}
+function addToSession(id){
+  const d=S.draft;if(!d)return;
+  if(d.list.includes(id)){toast('Déjà dans la séance.');return;}
+  const ti=d.list.indexOf('tapis');
+  if(ti!==-1&&id!=='tapis'&&ti===d.list.length-1)d.list.splice(ti,0,id);else d.list.push(id);
+  d.sets[id]=initSets(id);Store.saveDraft();
+}
+function altSheet(id){
+  const e=EX[id],a=alts(id);
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Alternative</div><h2 class="title-l">Remplacer ${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+    ${a.length?`<div class="stack" style="gap:0"><div class="pick-sec">Tes alternatives</div>${a.map(x=>bankRow(x,'swapto',id)).join('')}</div>`:'<p class="small muted" style="margin:0">Tu n\'as pas encore d\'alternative pour cet exercice. Celle que tu choisis sera gardée pour la prochaine fois.</p>'}
+    <button class="btn ghost block" data-act="pickswap" data-ex="${id}">${I.search} Choisir dans la banque d'exos</button>
+    <button class="btn danger block" data-act="rmex" data-ex="${id}">${I.trash} Retirer de la séance</button>
+    <p class="small muted" style="margin:0">Si tu as déjà validé des séries, l'alternative s'ajoute juste après et les séries faites sont gardées.</p>`);
+}
+
+/* ---------- Views: bank ---------- */
+function bankRow(id,act,from){
+  const e=EX[id];if(!e)return '';
+  const n=alts(id).length;
+  return `<button class="bank-row" data-act="${act||'exinfo'}" data-ex="${id}"${from?` data-from="${from}"`:''}><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(GROUPS[e.group]||'')} · ${esc(e.equip)}${e.custom?' · perso':''}</span></span>${n&&!act?`<span class="tag">${n} alt.</span>`:''}</button>`;
+}
+function filterIds(q,g){
+  const nq=norm(q.trim());
+  return Object.keys(EX).filter(id=>{const e=EX[id];if(g!=='all'&&e.group!==g)return false;if(!nq)return true;return norm(e.name+' '+e.equip+' '+e.muscles.join(' ')+' '+(GROUPS[e.group]||'')).includes(nq);});
+}
+function bankListHTML(){
+  const ids=filterIds(S.bankQ,S.bankG);
+  if(!ids.length)return `<div class="empty">Aucun exercice trouvé. Tu peux le créer avec « Créer un exercice ».</div>`;
+  return Object.keys(GROUPS).map(g=>{const gi=ids.filter(id=>EX[id].group===g);if(!gi.length)return '';return `<section class="card bank-group"><h3>${GROUPS[g]} <span>${gi.length}</span></h3>${gi.map(id=>bankRow(id)).join('')}</section>`;}).join('');
+}
+function viewExos(){
+  const total=Object.keys(EX).length;
+  const counts={};Object.values(EX).forEach(e=>counts[e.group]=(counts[e.group]||0)+1);
+  return `<div class="head-row"><div><div class="eyebrow">${total} exercices</div><h1 class="title-xl">Banque d'exos</h1></div><button class="icon-btn" data-act="newex">${I.plus}<span>Créer</span></button></div>
+  ${S.draft?`<p class="small muted" style="margin:0">Touche un exercice pour l'ajouter à ta séance en cours.</p>`:''}
+  <label class="search">${I.search}<input id="bankq" type="search" placeholder="Chercher : poulie, fessiers, presse…" value="${esc(S.bankQ)}" aria-label="Chercher un exercice"></label>
+  <div class="chips" role="tablist"><button class="chip ${S.bankG==='all'?'on':''}" data-act="bankg" data-g="all">Tous</button>${Object.keys(GROUPS).map(g=>`<button class="chip ${S.bankG===g?'on':''}" data-act="bankg" data-g="${g}">${GROUPS[g]} · ${counts[g]||0}</button>`).join('')}</div>
+  <div id="bankList" class="stack">${bankListHTML()}</div>`;
+}
+function exInfo(id){
+  const e=EX[id],a=alts(id),inDraft=S.draft&&S.draft.list.includes(id);
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">${esc(GROUPS[e.group]||'')} · ${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}</div><h2 class="title-l">${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+  <div class="figbox">${visualFor(id,FIG[id]?'Animation du mouvement : '+e.name:'Muscles travaillés : '+e.muscles.join(', '))}</div>
+  <div class="pills"><span class="pill">${esc(e.equip)}</span>${e.muscles.map(m=>`<span class="pill">${esc(m)}</span>`).join('')}${e.perHand?'<span class="pill">Charge par haltère</span>':''}</div>
+  ${e.cues.length?`<ul class="cues">${e.cues.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:'<p class="small muted" style="margin:0">Exercice perso : ajoute ta vidéo dans Réglages si tu veux.</p>'}
+  <a class="btn primary block" href="${esc(videoUrl(id))}" target="_blank" rel="noopener noreferrer">${I.ext} Voir la vidéo</a>
+  ${S.draft&&!inDraft?`<button class="btn blue block" data-act="addtosession" data-ex="${id}">${I.plus} Ajouter à la séance en cours</button>`:''}
+  <div class="stack" style="gap:0"><h3 class="title-m" style="margin-bottom:4px">Alternatives</h3>
+    ${a.length?a.map(x=>`<div class="alt-row"><span class="nm">${esc(EX[x].name)}<br><span class="small muted">${esc(EX[x].equip)}</span></span>${S.draft&&inDraft?`<button class="btn sm ghost" data-act="swapto" data-ex="${x}" data-from="${id}">Faire à la place</button>`:''}<button class="x" data-act="rmalt" data-ex="${x}" data-from="${id}" aria-label="Retirer ${esc(EX[x].name)} des alternatives">${I.trash}</button></div>`).join(''):'<p class="small muted" style="margin:4px 0 8px">Ajoute les exercices que tu peux faire à la place quand la machine est prise.</p>'}
+    <button class="btn ghost block" data-act="pickalt" data-ex="${id}" style="margin-top:8px">${I.plus} Ajouter une alternative</button>
+  </div>
+  ${e.custom?`<button class="btn danger block" data-act="delcustom" data-ex="${id}">${I.trash} Supprimer cet exercice perso</button>`:''}`);
+}
+/* Picker */
+let picker=null;
+function openPicker(ctx){
+  picker=Object.assign({q:'',g:'all'},ctx);
+  const t=ctx.mode==='addalt'?`Alternative à ${EX[ctx.for].name}`:ctx.mode==='swap'?`Remplacer ${EX[ctx.for].name}`:'Ajouter un exercice';
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Banque d'exos</div><h2 class="title-l">${esc(t)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+    <label class="search">${I.search}<input id="pickq" type="search" placeholder="Chercher un exercice" aria-label="Chercher un exercice" data-autofocus></label>
+    <div class="chips"><button class="chip on" data-act="pickg" data-g="all">Tous</button>${Object.keys(GROUPS).map(g=>`<button class="chip" data-act="pickg" data-g="${g}">${GROUPS[g]}</button>`).join('')}</div>
+    <div class="pick-list" id="pickList">${pickListHTML()}</div>`);
+}
+function pickListHTML(){
+  const p=picker;const exclude=new Set(p.for?[p.for].concat(p.mode==='addalt'?alts(p.for):[]):[]);
+  if(S.draft&&p.mode!=='addalt')S.draft.list.forEach(x=>exclude.add(x));
+  let ids=filterIds(p.q,p.g).filter(id=>!exclude.has(id));
+  let html='';
+  if(p.for&&!p.q&&p.g==='all'){
+    const grp=EX[p.for].group;const same=ids.filter(id=>EX[id].group===grp);
+    if(same.length)html+=`<div class="pick-sec">Même groupe : ${esc(GROUPS[grp])}</div>`+same.map(id=>bankRow(id,'pick')).join('');
+    ids=ids.filter(id=>EX[id].group!==grp);
+    if(ids.length)html+=`<div class="pick-sec">Tous les autres</div>`;
+  }
+  html+=ids.map(id=>bankRow(id,'pick')).join('');
+  return html||'<div class="empty">Aucun exercice trouvé.</div>';
+}
+function newExSheet(){
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Banque d'exos</div><h2 class="title-l">Créer un exercice</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+    <p class="small muted" style="margin:0">Pour une machine de ta salle qui n'est pas dans la liste.</p>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Nom</span><input class="input" id="nxname" placeholder="Ex. : Presse à cuisses Panatta" data-autofocus></label>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Groupe musculaire</span><select class="sel" id="nxgroup">${Object.keys(GROUPS).map(g=>`<option value="${g}">${GROUPS[g]}</option>`).join('')}</select></label>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Matériel</span><input class="input" id="nxequip" placeholder="Ex. : Machine, Poulie, Haltères"></label>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Ce que tu notes</span><select class="sel" id="nxmode">${Object.keys(MODES).map(m=>`<option value="${m}">${MODES[m]}</option>`).join('')}</select></label>
+    <button class="btn primary block" data-act="savenewex">Créer l'exercice</button>`);
+}
+
+/* ---------- Views: history ---------- */
+function progValue(id,sets){
+  const m=(EX[id]||{}).mode;
+  if(m==='time')return sets.reduce((a,x)=>a+(x.r||0),0);
+  if(m==='bw'||m==='hold')return Math.max(...sets.map(x=>x.r||0));
+  return Math.max(...sets.map(x=>x.w||0));
+}
+function progLabel(id){const m=(EX[id]||{}).mode;return m==='time'?['Minutes par séance','min']:m==='bw'?['Répétitions max par série','rép.']:m==='hold'?['Durée max','s']:['Charge max par séance','kg'];}
+function viewHistorique(){
+  const ses=sortedSessions();
+  const used=[];ses.forEach(s=>{if(s.ex)Object.keys(s.ex).forEach(id=>{if(EX[id]&&!used.includes(id))used.push(id);});});
+  const ids=used.length?used:PLANS.A.ex.concat(PLANS.B.ex);
+  if(!S.histEx||!ids.includes(S.histEx))S.histEx=ids[0];
+  const cur=S.histEx,[lab,unit]=progLabel(cur);
+  const pts=ses.filter(s=>s.ex&&s.ex[cur]).map(s=>({x:pkey(s.date).getTime(),y:progValue(cur,s.ex[cur])}));
+  let prog='';
+  if(pts.length>=2){
+    const sorted=pts.slice().sort((a,b)=>a.x-b.x),first=sorted[0].y,lastv=sorted[sorted.length-1].y,diff=lastv-first;
+    prog=`<div class="row" style="justify-content:space-between"><div><div class="small muted">${lab}</div><div class="title-l num">${fmt(first)} → ${fmt(lastv)} ${unit}</div></div><span class="badge ${diff>0?'A':'rest'}" style="font-size:16px">${diff>0?'+':''}${fmt(diff)} ${unit}</span></div>`+
+      lineChart({series:[{pts,cls:'ln',dots:true,area:true,end:true}],label:'Progression pour '+EX[cur].name});
+  }else prog=`<div class="empty">${pts.length?'Encore une séance avec cet exercice et la courbe apparaît.':'Pas encore de séance avec cet exercice.'}</div>`;
+  const list=ses.length?ses.map(s=>{
+    const open=S.openHist===s.id;
+    const nsets=s.ex?Object.values(s.ex).reduce((a,x)=>a+x.length,0):0;
+    const tm=tapisMin(s);
+    const meta=s.type==='five'?`${s.min||60} min de foot`:`${nsets} séries · ${s.dur||'?'} min${tm?` · cardio ${tm} min`:''}`;
+    let det='';
+    if(open){
+      det=`<div class="hist-detail">${s.ex?Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(EX[id]?EX[id].name:id)}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join(''):''}
+      ${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} % · ${fmt(s.tapis.v)} km/h</b></div>`:''}
+      ${s.note?`<div class="muted">${esc(s.note)}</div>`:''}
+      <div><button class="btn sm danger" data-act="delses" data-id="${s.id}">${I.trash} Supprimer</button></div></div>`;
+    }
+    return `<div class="card hist-item"><button class="h" data-act="togglehist" data-id="${s.id}" aria-expanded="${open}"><span class="badge ${s.type}">${typeBadge(s.type)}</span><div style="flex:1;min-width:0"><b>${typeTitle(s.type)}</b><div class="meta">${fmtDate(s.date)} · ${meta}</div></div><span class="muted" aria-hidden="true">${open?'▴':'▾'}</span></button>${det}</div>`;
+  }).join(''):`<div class="empty">Tes séances apparaîtront ici dès que tu en auras terminé une.</div>`;
+  return `<div class="head-row"><div><div class="eyebrow">Progrès</div><h1 class="title-xl">Historique</h1></div><a class="icon-btn" href="#mois">${I.cal}<span>Mois</span></a></div>
+  <section class="card stack"><h2 class="title-m">Progression par exercice</h2>
+    <div class="chips" role="tablist">${ids.map(id=>`<button class="chip ${id===cur?'on':''}" data-act="histex" data-ex="${id}" role="tab" aria-selected="${id===cur}">${esc(EX[id].name)}</button>`).join('')}</div>
+    ${prog}</section>
+  <h2 class="title-m">Séances</h2>
+  ${list}`;
+}
+
+/* ---------- Views: weight ---------- */
+function viewPoids(){
+  const ws=sortedWeights(),goal=num(S.settings.goal)||72,today=pkey(dkey());
+  const last=ws[ws.length-1],first=ws[0];
+  const a7=avgBetween(addDays(today,-6),today),p7=avgBetween(addDays(today,-13),addDays(today,-7));
+  const delta=a7!=null&&p7!=null?a7-p7:null;
+  const ref=a7!=null?a7:last?last.kg:null;
+  const startKg=first?first.kg:null;
+  const pct=startKg&&ref!=null&&startKg>goal?Math.max(0,Math.min(100,(startKg-ref)/(startKg-goal)*100)):0;
+  const rows=ws.slice(-12).reverse().map(w=>`<div class="l"><span>${fmtDate(w.date)}</span><span class="row"><b class="num">${fmt(w.kg)} kg</b><button class="x" data-act="delw" data-date="${w.date}" aria-label="Supprimer la pesée du ${fmtDate(w.date)}">${I.trash}</button></span></div>`).join('');
+  const roll=rolling();
+  const chart=ws.length>=2?`${lineChart({series:[{pts:ws.map(w=>({x:pkey(w.date).getTime(),y:w.kg})),cls:'ln',dots:true},{pts:roll.map(w=>({x:pkey(w.date).getTime(),y:w.kg})),cls:'ln2',end:true}],goal,label:'Courbe de poids et moyenne sur 7 jours'})}
+    <div class="legend"><span><i style="background:var(--accent)"></i>Pesées</span><span><i style="background:var(--accent-2)"></i>Moyenne 7 jours</span></div>`:`<div class="empty">${ws.length?'Encore une pesée et la courbe apparaît.':'Ajoute ta première pesée pour voir ta courbe.'}</div>`;
+  return `<div><div class="eyebrow">Poids</div><h1 class="title-xl">Suivi du poids</h1></div>
+  <section class="card stack">
+    <h2 class="title-m">Pesée du jour</h2>
+    <p class="small muted" style="margin:-6px 0 0">Le matin, à jeun, 3 à 4 fois par semaine. Regarde la moyenne, pas le chiffre du jour.</p>
+    <div class="row">
+      <label class="fld" style="flex:1.2"><input id="wkg" inputmode="decimal" placeholder="${last?fmt(last.kg):'88,45'}" aria-label="Poids en kg"><span>kg</span></label>
+      <input id="wdate" class="input" type="date" value="${dkey()}" max="${dkey()}" style="flex:1;height:50px" aria-label="Date de la pesée">
+    </div>
+    <button class="btn primary block" data-act="addw">Enregistrer la pesée</button>
+  </section>
+  <div class="tiles">
+    <div class="tile"><div class="l">Moyenne 7 jours</div><div class="v num">${a7!=null?fmt1(a7)+'<small>kg</small>':'–'}</div></div>
+    <div class="tile"><div class="l">Vs semaine d'avant</div><div class="v num ${delta!=null?(delta<=0?'trend-down':'trend-up'):''}">${delta!=null?(delta>0?'+':'')+fmt1(delta)+'<small>kg</small>':'–'}</div></div>
+    <div class="tile"><div class="l">Dernière pesée</div><div class="v num">${last?fmt(last.kg)+'<small>kg</small>':'–'}</div></div>
+    <div class="tile"><div class="l">Reste à perdre</div><div class="v num">${ref!=null?fmt1(Math.max(0,ref-goal))+'<small>kg</small>':'–'}</div></div>
+  </div>
+  <section class="card stack">
+    <div class="row" style="justify-content:space-between"><h2 class="title-m">Vers ${fmt(goal)} kg</h2><span class="small muted num">${startKg?`départ ${fmt(startKg)} kg`:''}</span></div>
+    <div class="goalbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="Progression vers l'objectif"><i style="width:${pct}%"></i></div>
+    <div class="small muted">${startKg?`${Math.round(pct)} % du chemin · rythme visé : environ 0,5 kg par semaine`:'Ta première pesée sert de point de départ.'}</div>
+    ${chart}
+  </section>
+  ${ws.length?`<section class="card"><h2 class="title-m" style="margin-bottom:4px">Dernières pesées</h2><div class="wlist">${rows}</div></section>`:''}
+`;
+}
+
+/* ---------- Views: settings ---------- */
+function viewReglages(){
+  const t=S.settings.theme||'auto',plan=S.settings.plan||'1';
+  return `<div><div class="eyebrow">Réglages</div><h1 class="title-xl">Ton Sporty</h1></div>
+  <section class="card stack"><h2 class="title-m">Thème</h2>
+    <div class="seg" role="radiogroup" aria-label="Thème">${[['light','Clair'],['dark','Sombre'],['auto','Auto']].map(([k,l])=>`<button role="radio" aria-checked="${t===k}" class="${t===k?'on':''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
+    <p class="small muted" style="margin:0">Auto : clair de 7 h à 19 h, sombre le soir, pour tes séances de 19 h à 20 h.</p></section>
+  <section class="card stack"><h2 class="title-m">Mes jours de salle</h2>
+    ${Object.entries(WEEK_OPTS).map(([k,o])=>`<button class="opt ${plan===k?'on':''}" data-act="plan" data-v="${k}" role="radio" aria-checked="${plan===k}"><span class="dot"></span><span><b>${o.label}</b> + Five le vendredi<br><span class="small muted">${esc(o.note)}</span></span></button>`).join('')}
+  </section>
+  <section class="card stack"><h2 class="title-m">Objectif de poids</h2>
+    <label class="fld" style="max-width:200px"><input id="goal" inputmode="decimal" value="${esc(fmt(num(S.settings.goal)||72))}" aria-label="Objectif en kg"><span>kg</span></label></section>
+  <section class="card stack"><h2 class="title-m">Mes vidéos</h2>
+    <p class="small muted" style="margin:0">Par défaut, « Voir la vidéo » ouvre une recherche YouTube en français. Pour garder une vidéo précise, colle son lien ici.</p>
+    <select class="sel" id="vidsel" aria-label="Exercice">${Object.keys(EX).sort((a,b)=>EX[a].name.localeCompare(EX[b].name,'fr')).map(id=>`<option value="${id}">${esc(EX[id].name)}${(S.settings.videos||{})[id]?' ✓':''}</option>`).join('')}</select>
+    <input class="input" id="vidurl" type="url" placeholder="https://www.youtube.com/watch?v=…" aria-label="Lien de la vidéo">
+    <button class="btn ghost" data-act="savevid">Enregistrer le lien</button>
+  </section>
+  <section class="card stack" id="donnees"><h2 class="title-m">Mes données</h2>
+    <p class="small muted" style="margin:0">Tes séances, pesées et pas sont enregistrés uniquement sur ce téléphone. Si tu supprimes l'appli ou changes de téléphone, seule une sauvegarde permet de les retrouver.</p>
+    <p class="small" style="margin:0;font-weight:600">${texteDerniereSauvegarde()}</p>
+    <button class="btn primary block" data-act="backup">${I.save} Sauvegarder mes données</button>
+    <button class="btn ghost block" data-act="openimport">Importer une sauvegarde</button>
+    <p class="small muted" style="margin:0">La sauvegarde crée un fichier : choisis « Enregistrer dans Fichiers », puis iCloud Drive pour le garder en lieu sûr. Sporty te le rappelle si ta dernière sauvegarde date de plus de ${RAPPEL_JOURS} jours.</p>
+  </section>`;
+}
+
+/* ---------- Five ---------- */
+let fiveMin=60;
+function fiveModal(){
+  const st=weekStatus();
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Vendredi</div><h2 class="title-l">Noter le Five</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+    ${st.five?'<p class="hint">Un Five est déjà noté cette semaine. Tu peux en ajouter un autre.</p>':''}
+    <div class="stack" style="gap:6px"><span class="small" style="font-weight:700">Durée</span>
+      <div class="seg" role="radiogroup" aria-label="Durée du Five">${[60,75,90].map(m=>`<button role="radio" aria-checked="${m===60}" class="${m===60?'on':''}" data-act="fivemin" data-v="${m}">${m===60?'1 h':m===75?'1 h 15':'1 h 30'}</button>`).join('')}</div></div>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Date</span><input class="input" id="fivedate" type="date" value="${dkey()}" max="${dkey()}"></label>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Note (facultatif)</span><input class="input" id="fivenote" placeholder="Ex. : bonne forme, 3 buts"></label>
+    <button class="btn primary block" data-act="savefive">Enregistrer</button>`);
+  fiveMin=60;
+}
+
