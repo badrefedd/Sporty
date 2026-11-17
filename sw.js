@@ -2,10 +2,10 @@
    instantanément, même sans réseau à la salle.
    À chaque mise à jour de l'appli, change VERSION : le téléphone téléchargera
    la nouvelle version en arrière-plan et l'utilisera à la prochaine ouverture. */
-const VERSION='sporty-v3.1.0';
+const VERSION='sporty-v3.2.0';
 const FICHIERS=[
   './','./index.html','./manifest.webmanifest','./css/styles.css',
-  './js/outils.js','./js/exercices.js','./js/stockage.js','./js/sauvegarde.js',
+  './js/outils.js','./js/exercices.js','./js/alternatives.js','./js/stockage.js','./js/sauvegarde.js',
   './js/visuels.js','./js/logique.js','./js/vues.js','./js/app.js',
   './icons/icon.svg','./icons/apple-touch-icon.png','./icons/icon-192.png','./icons/icon-512.png',
   './fonts/Barlow-400-latin-ext.woff2',

@@ -8,8 +8,17 @@ function fieldsFor(id){
   if(e.mode==='hold')return [{k:'r',label:'sec',im:'numeric',main:true},{k:'w',label:'kg',im:'decimal'}];
   return [{k:'w',label:'kg',im:'decimal'},{k:'r',label:'rép.',im:'numeric',main:true}];
 }
+/* Prescription effective : en séance, une alternative garde séries, repos et fourchette
+   de l'exercice qu'elle remplace (S.draft.rx). */
+function rx(id){return Object.assign({},EX[id],(S.draft&&S.draft.rx&&S.draft.rx[id])||{});}
+const remplaceDe=id=>S.draft&&S.draft.from?S.draft.from[id]||null:null;
+/* « Chest press (à la place de Développé couché) » */
+function exLabel(id,ses){
+  const n=EX[id]?EX[id].name:id,o=ses&&ses.remplace&&ses.remplace[id];
+  return o?`${n} (à la place de ${EX[o]?EX[o].name:o})`:n;
+}
 function presc(id){
-  const e=EX[id];const rng=e.min===e.max?e.min:e.min+'-'+e.max;
+  const e=rx(id);const rng=e.min===e.max?e.min:e.min+'-'+e.max;
   if(e.mode==='time')return `${rng} min`;
   if(e.mode==='hold')return `${e.sets} × ${rng} s`;
   return `${e.sets} × ${rng}`;
@@ -28,8 +37,9 @@ function setsStr(id,sets){
   return same?`${fmt(sets[0].w)} kg × ${sets.map(x=>x.r).join(' · ')}`:sets.map(x=>`${fmt(x.w)}×${x.r}`).join(' · ');
 }
 function suggest(id){
-  const e=EX[id],last=lastFor(id);
+  const e=rx(id),last=lastFor(id);
   if(!last){
+    if(remplaceDe(id)&&e.mode==='kg')return{w:null,reps:[],up:false,last:null,txt:'Première fois : commence léger, vise le haut de la fourchette.'};
     if(e.mode==='kg')return{w:null,reps:[],up:false,last:null,txt:`Première fois : choisis une charge avec laquelle tu fais ${e.max} répétitions en gardant 1 ou 2 en réserve.`};
     if(e.mode==='bw')return{w:0,reps:[],up:false,last:null,txt:'Première fois : fais le maximum de répétitions propres, sans aller à l\'échec.'};
     if(e.mode==='time')return{w:id==='tapis'?11:null,reps:[],up:false,last:null,txt:id==='tapis'?'20 min à 10-12 % d\'inclinaison, 4,5 à 5,5 km/h.':'Note la durée et le niveau de la machine.'};
@@ -48,7 +58,7 @@ function suggest(id){
   return{w:sets[0].w||0,reps:sets.map(x=>x.r),up:false,last,txt:'Fais au moins autant que la dernière fois.'};
 }
 function initSets(id){
-  const e=EX[id],sg=suggest(id);
+  const e=rx(id),sg=suggest(id);
   return Array.from({length:e.sets},(_,i)=>{
     let w=sg.w==null?'':fmt(sg.w),r;
     if(e.mode==='kg'||e.mode==='bw')r=String(sg.up&&e.mode==='kg'?e.min:(sg.reps[i]!=null?sg.reps[i]:e.min));

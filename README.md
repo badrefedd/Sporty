@@ -28,6 +28,7 @@ Pas de framework, pas d'étape de compilation : les fichiers du dépôt sont ceu
 | `css/styles.css` | Apparence (thèmes clair et sombre) |
 | `js/outils.js` | Icônes, petites fonctions, thème, minuteur de repos |
 | `js/exercices.js` | Banque d'exercices, séances A et B, options de jours |
+| `js/alternatives.js` | Schéma de mouvement et alternatives de chaque exercice |
 | `js/stockage.js` | État de l'appli et enregistrement (IndexedDB, secours localStorage) |
 | `js/sauvegarde.js` | Fichier de sauvegarde, import, rappel des 30 jours |
 | `js/visuels.js` | Animations et schémas des muscles |
@@ -42,6 +43,21 @@ Le reste de l'appli ne passe que par `Store` et n'a pas à changer.
 
 **Publier une mise à jour** : modifier `VERSION` en haut de `sw.js`, sinon les téléphones
 garderont l'ancienne version en mémoire.
+
+## Alternatives
+
+Les alternatives sont écrites à la main dans `js/alternatives.js` (règles en tête du fichier).
+Après une modification :
+
+```bash
+node tests/alternatives.test.js
+```
+
+```bash
+node outils/alternatives-md.js
+```
+
+Le premier vérifie les règles, le second régénère `ALTERNATIVES.md`, la version lisible.
 
 ## Tester en local
 

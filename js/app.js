@@ -44,7 +44,7 @@ document.addEventListener('click',e=>{
     case 'start':unlockAudio();closeModal();startSession(el.dataset.type);break;
     case 'toggleset':{
       unlockAudio();
-      const i=+el.dataset.i,set=S.draft.sets[id][i],ex=EX[id];
+      const i=+el.dataset.i,set=S.draft.sets[id][i],ex=rx(id);
       if(!set.done){
         const F=fieldsFor(id),main=F.find(f=>f.main),other=F.find(f=>!f.main);
         const mv=num(set[main.k]);
@@ -58,7 +58,7 @@ document.addEventListener('click',e=>{
         if(ex.rest)Timer.start(ex.rest,isLast?'Exercice suivant':ex.name);
       }else set.done=false;
       Store.saveDraft();render();break;}
-    case 'addset':{const arr=S.draft.sets[id],l=arr[arr.length-1]||{w:'',r:String(EX[id].min)};arr.push({w:l.w,r:l.r,done:false});Store.saveDraft();render();break;}
+    case 'addset':{const arr=S.draft.sets[id],l=arr[arr.length-1]||{w:'',r:String(rx(id).min)};arr.push({w:l.w,r:l.r,done:false});Store.saveDraft();render();break;}
     case 'rmset':{const arr=S.draft.sets[id];if(arr.length>1){arr.pop();Store.saveDraft();render();}break;}
     case 'exinfo':if(S.route==='exos'&&S.draft&&!S.draft.list.includes(id)&&el.classList.contains('bank-row')){exInfo(id);}else exInfo(id);break;
     case 'close':closeModal();break;
@@ -135,11 +135,11 @@ document.addEventListener('click',e=>{
       else if(p.mode==='prog'){setPlanEx(p.t,planEx(p.t).concat(id));closeModal();render();toast(`${EX[id].name} ajouté à la séance ${p.t}`);}
       else{addToSession(id);closeModal();render();setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}
       break;}
-    case 'swapto':{const from=el.dataset.from;if(swapEx(from,id)!==false){closeModal();if(S.route!=='seance')location.hash='seance';else render();toast(`${EX[id].name} à la place de ${EX[from].name}`);}break;}
+    case 'swapto':{const from=el.dataset.from;if(swapEx(from,id)!==false){closeModal();if(S.route!=='seance')location.hash='seance';else render();toast(`${EX[id].name} à la place de ${EX[from].name}`);setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}break;}
     case 'rmalt':removeAlt(el.dataset.from,id);exInfo(el.dataset.from);break;
     case 'altsheet':altSheet(id);break;
     case 'rmex':{const d=S.draft;const done=(d.sets[id]||[]).some(x=>x.done);
-      const go=()=>{d.list=d.list.filter(x=>x!==id);delete d.sets[id];Store.saveDraft();closeModal();render();};
+      const go=()=>{d.list=d.list.filter(x=>x!==id);delete d.sets[id];if(d.from)delete d.from[id];if(d.rx)delete d.rx[id];Store.saveDraft();closeModal();render();toast(`${EX[id].name} retiré de la séance`);};
       if(done)confirmBox('Retirer cet exercice ?','Les séries déjà validées pour cet exercice seront perdues.','Retirer',go,true);else go();break;}
     case 'savevid':{const sid=$('#vidsel').value,v=$('#vidurl').value.trim();S.settings.videos=Object.assign({},S.settings.videos);
       if(v&&!/^https?:\/\//i.test(v)){toast('Colle un lien qui commence par https://');return;}

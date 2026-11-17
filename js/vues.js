@@ -117,7 +117,7 @@ function daySheet(k){
   const future=k>dkey();
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Journée</div><h2 class="title-l" style="text-transform:capitalize">${fmtDate(k)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     ${ses.length?ses.map(s=>`<div class="card" style="box-shadow:none;padding:12px"><div class="row"><span class="badge ${s.type}">${typeBadge(s.type)}</span><b>${typeTitle(s.type)}</b><span class="small muted">${s.type==='five'?(s.min||60)+' min':(s.dur||'?')+' min'}</span></div>
-      ${s.ex?`<div class="hist-detail" style="border:0;padding-top:8px">${Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(EX[id]?EX[id].name:id)}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join('')}${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} %</b></div>`:''}</div>`:''}
+      ${s.ex?`<div class="hist-detail" style="border:0;padding-top:8px">${Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(exLabel(id,s))}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join('')}${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} %</b></div>`:''}</div>`:''}
       ${s.note?`<div class="small muted">${esc(s.note)}</div>`:''}</div>`).join(''):`<p class="muted" style="margin:0">${future?'Rien de prévu dans l\'historique pour ce jour.':'Pas de séance ce jour-là.'}</p>`}
     ${w?`<div class="row"><span class="pill">Pesée : ${fmt(w.kg)} kg</span></div>`:''}
     ${future?'':`<div class="stack" style="gap:8px"><h3 class="title-m">Activité (app Forme)</h3>
@@ -137,9 +137,9 @@ function viewChoose(){
   <ul class="cues"><li>Repos de 1 min 30 à 2 min sur les gros exercices, 1 min sur les petits. Le minuteur se lance tout seul quand tu valides une série.</li><li>Quand tu atteins le haut de la fourchette sur toutes les séries, Sporty te propose de monter la charge.</li><li>Machine prise ? Touche « Alternative » sur l'exercice.</li><li>Séance ratée : fais celle qui manque à la prochaine occasion, sans rattraper.</li></ul></section>`;
 }
 function exCard(id){
-  const e=EX[id],d=S.draft,sets=d.sets[id]||[],sg=suggest(id),F=fieldsFor(id);
+  const e=rx(id),d=S.draft,sets=d.sets[id]||[],sg=suggest(id),F=fieldsFor(id);
   const allDone=sets.length&&sets.every(x=>x.done);
-  const nAlt=alts(id).length;
+  const L=altLists(id),nAlt=L.off.length+L.perso.length+L.dep.length,orig=remplaceDe(id);
   const rows=sets.map((x,i)=>`<div class="set ${x.done?'done':''}">
     <span class="set-n">${i+1}</span>
     ${F.map(f=>`<label class="fld"><input id="${f.k}-${id}-${i}" data-ex="${id}" data-i="${i}" data-f="${f.k}" inputmode="${f.im}" autocomplete="off" placeholder="0" value="${esc(x[f.k])}" aria-label="${esc(f.label)} série ${i+1}"><span>${esc(f.label)}</span></label>`).join('')}
@@ -147,7 +147,7 @@ function exCard(id){
   return `<section class="card ex ${allDone?'complete':''}" id="ex-${id}">
     <div class="ex-top">
       <button class="ex-thumb" data-act="exinfo" data-ex="${id}" aria-label="Voir comment faire : ${esc(e.name)}">${visualFor(id)}<span class="play">${I.play}</span></button>
-      <div style="min-width:0"><h3>${esc(e.name)}</h3><p class="presc">${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}${e.perHand?' · kg par haltère':''}${e.note?' · '+esc(e.note):''}</p>
+      <div style="min-width:0"><h3>${esc(e.name)}</h3>${orig&&EX[orig]?`<p class="small muted" style="margin:2px 0 0">À la place de ${esc(EX[orig].name)}</p>`:''}<p class="presc">${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}${e.perHand?' · kg par haltère':''}${e.note?' · '+esc(e.note):''}</p>
       ${sg.last?`<p class="last" style="margin-top:4px">Dernière fois : <b>${setsStr(id,sg.last.ex[id])}</b></p>`:''}</div>
     </div>
     <p class="hint ${sg.up?'up':''}">${esc(sg.txt)}</p>
@@ -158,6 +158,7 @@ function exCard(id){
 function migrateDraft(d){
   if(!d)return d;
   if(!d.list)d.list=Object.keys(d.sets||{});
+  d.from=d.from||{};d.rx=d.rx||{};
   if(d.tapis){if(!d.list.includes('tapis')){d.list.push('tapis');d.sets.tapis=[{r:String(d.tapis.min||'20'),w:String(d.tapis.inc||'11'),done:!!d.tapis.done}];}delete d.tapis;}
   d.list=d.list.filter(id=>EX[id]);
   return d;
@@ -177,9 +178,9 @@ function viewSeance(){
 function startSession(type){
   if(S.draft){location.hash='seance';return;}
   const list=planEx(type).slice();if(type!=='L'&&!list.includes('tapis'))list.push('tapis');
-  const sets={};list.forEach(id=>{sets[id]=initSets(id);});
+  S.draft={type,start:Date.now(),list,sets:{},from:{},rx:{}};
+  const sets=S.draft.sets;list.forEach(id=>{sets[id]=initSets(id);});
   if(type!=='L'){const thu=new Date().getDay()===4;if(S.settings.plan==='3'&&thu&&type==='B')sets.tapis[0].w='9';}
-  S.draft={type,start:Date.now(),list,sets};
   Store.saveDraft();
   if(location.hash==='#seance')render();else location.hash='seance';
   window.scrollTo(0,0);
@@ -191,6 +192,7 @@ function finishSession(){
   d.list.forEach(id=>{const s=(d.sets[id]||[]).filter(x=>x.done).map(x=>({w:num(x.w)||0,r:num(x.r)||0}));if(s.length){ex[id]=s;n+=s.length;if(EX[id].mode==='kg')s.forEach(x=>vol+=x.w*x.r);}});
   if(!n){toast('Valide au moins une série, ou annule la séance.');return;}
   const ses={id:uid(),type:d.type,date:dkey(new Date(d.start)),ts:d.start,dur:Math.max(1,Math.round((Date.now()-d.start)/60000)),ex};
+  const rem={};Object.keys(ex).forEach(id=>{if(d.from&&d.from[id])rem[id]=d.from[id];});if(Object.keys(rem).length)ses.remplace=rem;
   const records=Object.keys(ex).filter(id=>{if(EX[id].mode!=='kg')return false;const prev=maxEver(id);const best=Math.max(...ex[id].map(x=>x.w));return prev>0&&best>prev;});
   S.sessions.push(ses);S.draft=null;Timer.stop();
   Store.saveSession(ses);Store.saveDraft();
@@ -204,9 +206,18 @@ function finishSession(){
 function swapEx(oldId,newId){
   const d=S.draft;if(!d)return;
   if(d.list.includes(newId)){toast('Cet exercice est déjà dans la séance.');return false;}
+  d.from=d.from||{};d.rx=d.rx||{};
   const i=d.list.indexOf(oldId);
   const hasDone=(d.sets[oldId]||[]).some(x=>x.done);
-  if(hasDone)d.list.splice(i+1,0,newId);else{d.list.splice(i,1,newId);delete d.sets[oldId];}
+  /* Exercice d'origine du programme (si on remplace une alternative, on remonte à l'original). */
+  const orig=d.from[oldId]||oldId,base=rx(oldId);
+  if(hasDone)d.list.splice(i+1,0,newId);else{d.list.splice(i,1,newId);delete d.sets[oldId];delete d.from[oldId];delete d.rx[oldId];}
+  if(newId!==orig){
+    d.from[newId]=orig;
+    /* Même type (charge, poids du corps…) : on garde séries, repos et fourchette de l'original. */
+    if(EX[newId].mode===EX[orig].mode)d.rx[newId]={sets:base.sets,min:base.min,max:base.max,rest:base.rest};
+  }
+  /* Jamais la charge de l'exercice remplacé : initSets ne lit que l'historique de newId. */
   d.sets[newId]=initSets(newId);
   Store.saveDraft();return true;
 }
@@ -217,18 +228,28 @@ function addToSession(id){
   if(ti!==-1&&id!=='tapis'&&ti===d.list.length-1)d.list.splice(ti,0,id);else d.list.push(id);
   d.sets[id]=initSets(id);Store.saveDraft();
 }
+/* Une ligne d'alternative avec ses étiquettes. */
+function altRow(from,x,opts){
+  const e=EX[x.id],tags=altTags(from,x.id,opts);
+  const act=opts.act||'swapto';
+  return `<button class="bank-row alt" data-act="${act}" data-ex="${x.id}" data-from="${from}"><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0;flex:1"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(e.equip)}${x.note?' · '+esc(x.note):''}</span>${tags.length?`<span class="tags">${tags.map(t=>`<i class="t-${norm(t).replace(/\W+/g,'-')}">${esc(t)}</i>`).join('')}</span>`:''}</span></button>`;
+}
 function altSheet(id){
-  const e=EX[id],a=alts(id);
+  const e=EX[id],L=altLists(id,S.draft?S.draft.list:[]);
+  const sec=(t,arr,o)=>arr.length?`<div class="stack" style="gap:0"><div class="pick-sec">${t}</div>${arr.map(x=>altRow(id,x,o)).join('')}</div>`:'';
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Alternative</div><h2 class="title-l">Remplacer ${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
-    ${a.length?`<div class="stack" style="gap:0"><div class="pick-sec">Tes alternatives</div>${a.map(x=>bankRow(x,'swapto',id)).join('')}</div>`:'<p class="small muted" style="margin:0">Tu n\'as pas encore d\'alternative pour cet exercice. Celle que tu choisis sera gardée pour la prochaine fois.</p>'}
+    ${sec('Même mouvement, autre matériel',L.off,{})}
+    ${sec('Tes alternatives perso',L.perso,{perso:true})}
+    ${sec('Dépannage : mouvement différent',L.dep,{dep:true})}
+    ${!L.off.length&&!L.perso.length&&!L.dep.length?'<p class="small muted" style="margin:0">Pas d\'alternative disponible pour cet exercice.</p>':''}
     <button class="btn ghost block" data-act="pickswap" data-ex="${id}">${I.search} Choisir dans la banque d'exos</button>
-    <p class="small muted" style="margin:0">Si tu as déjà validé des séries, l'alternative s'ajoute juste après et les séries faites sont gardées.</p>`);
+    <p class="small muted" style="margin:0">La charge n'est jamais reprise : Sporty propose celle de ta dernière fois sur l'alternative. Séries, repos et répétitions restent ceux de ${esc((EX[remplaceDe(id)]||e).name)}, sauf pour un exercice au poids du corps ou en durée.</p>`);
 }
 
 /* ---------- Views: bank ---------- */
 function bankRow(id,act,from){
   const e=EX[id];if(!e)return '';
-  const n=alts(id).length;
+  const L=act?null:altLists(id),n=L?L.off.length+L.perso.length:0;
   return `<button class="bank-row" data-act="${act||'exinfo'}" data-ex="${id}"${from?` data-from="${from}"`:''}><span class="ic">${mmapSVG(e.group,' ',true)}</span><span style="min-width:0"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(GROUPS[e.group]||'')} · ${esc(e.equip)}${e.custom?' · perso':''}</span></span>${isHidden(id)&&!act?`<span class="tag off">masqué</span>`:n&&!act?`<span class="tag">${n} alt.</span>`:''}</button>`;
 }
 function filterIds(q,g,withHidden){
@@ -252,7 +273,7 @@ function viewExos(){
   <div id="bankList" class="stack">${bankListHTML()}</div>`;
 }
 function exInfo(id){
-  const e=EX[id],a=alts(id),inDraft=S.draft&&S.draft.list.includes(id);
+  const e=EX[id],inDraft=S.draft&&S.draft.list.includes(id),L=altLists(id,inDraft?S.draft.list:[]);
   openModal(`<div class="sheet-head"><div><div class="eyebrow">${esc(GROUPS[e.group]||'')} · ${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}</div><h2 class="title-l">${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
   <div class="figbox">${visualFor(id,FIG[id]?'Animation du mouvement : '+e.name:'Muscles travaillés : '+e.muscles.join(', '))}</div>
   <div class="pills"><span class="pill">${esc(e.equip)}</span>${e.muscles.map(m=>`<span class="pill">${esc(m)}</span>`).join('')}${e.perHand?'<span class="pill">Charge par haltère</span>':''}</div>
@@ -260,8 +281,12 @@ function exInfo(id){
   <a class="btn primary block" href="${esc(videoUrl(id))}" target="_blank" rel="noopener noreferrer">${I.ext} Voir la vidéo</a>
   ${S.draft&&!inDraft?`<button class="btn blue block" data-act="addtosession" data-ex="${id}">${I.plus} Ajouter à la séance en cours</button>`:''}
   <div class="stack" style="gap:0"><h3 class="title-m" style="margin-bottom:4px">Alternatives</h3>
-    ${a.length?a.map(x=>`<div class="alt-row"><span class="nm">${esc(EX[x].name)}<br><span class="small muted">${esc(EX[x].equip)}</span></span>${S.draft&&inDraft?`<button class="btn sm ghost" data-act="swapto" data-ex="${x}" data-from="${id}">Faire à la place</button>`:''}<button class="x" data-act="rmalt" data-ex="${x}" data-from="${id}" aria-label="Retirer ${esc(EX[x].name)} des alternatives">${I.trash}</button></div>`).join(''):'<p class="small muted" style="margin:4px 0 8px">Ajoute les exercices que tu peux faire à la place quand la machine est prise.</p>'}
-    <button class="btn ghost block" data-act="pickalt" data-ex="${id}" style="margin-top:8px">${I.plus} Ajouter une alternative</button>
+    ${MOUV[id]?`<p class="small muted" style="margin:0 0 4px">Mouvement : ${esc(SCHEMAS[MOUV[id][0]])}</p>`:''}
+    ${L.off.map(x=>altRow(id,x,{act:inDraft?'swapto':'exinfo'})).join('')}
+    ${L.perso.map(x=>`<div class="alt-row">${altRow(id,x,{perso:true,act:inDraft?'swapto':'exinfo'})}<button class="x" data-act="rmalt" data-ex="${x.id}" data-from="${id}" aria-label="Retirer ${esc(EX[x.id].name)} de tes alternatives">${I.trash}</button></div>`).join('')}
+    ${L.dep.length?`<div class="pick-sec">Dépannage</div>${L.dep.map(x=>altRow(id,x,{dep:true,act:inDraft?'swapto':'exinfo'})).join('')}`:''}
+    ${!L.off.length&&!L.perso.length&&!L.dep.length?'<p class="small muted" style="margin:4px 0 8px">Pas encore d\'alternative pour cet exercice.</p>':''}
+    <button class="btn ghost block" data-act="pickalt" data-ex="${id}" style="margin-top:8px">${I.plus} Ajouter une alternative perso</button>
   </div>
   ${id==='tapis'?'':isHidden(id)?`<button class="btn ghost block" data-act="unhide" data-ex="${id}">${I.eye} Réafficher dans la banque</button>`:`<button class="btn ghost block" data-act="hide" data-ex="${id}">${I.eyeoff} Masquer de la banque</button>`}
   <p class="small muted" style="margin:-4px 0 0">${isHidden(id)?'Cet exercice est masqué : il n\'apparaît plus dans la banque ni dans les suggestions.':'Pour un exercice que tu ne fais jamais ou qui n\'existe pas dans ta salle. Tes séances passées ne changent pas.'}</p>
@@ -330,7 +355,7 @@ function viewHistorique(){
     const meta=s.type==='five'?`${s.min||60} min de foot`:`${nsets} séries · ${s.dur||'?'} min${tm?` · cardio ${tm} min`:''}`;
     let det='';
     if(open){
-      det=`<div class="hist-detail">${s.ex?Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(EX[id]?EX[id].name:id)}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join(''):''}
+      det=`<div class="hist-detail">${s.ex?Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(exLabel(id,s))}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join(''):''}
       ${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} % · ${fmt(s.tapis.v)} km/h</b></div>`:''}
       ${s.note?`<div class="muted">${esc(s.note)}</div>`:''}
       <div><button class="btn sm danger" data-act="delses" data-id="${s.id}">${I.trash} Supprimer</button></div></div>`;
