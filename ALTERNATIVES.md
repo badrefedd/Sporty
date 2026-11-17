@@ -41,7 +41,7 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 | **Dips buste penché** | Poussée déclinée · Polyarticulaire | 1. Développé décliné barre<br>2. Développé couché haltères<br>3. Développé couché<br>4. Chest press (développé assis machine)<br>5. Dips (buste plus droit) *même poste* | – |
 | **Pull-over haltère** | Pull-over (bras tendus) · Isolation | 1. Pull-over à la poulie haute | Écarté couché haltères |
 
-## Dos (18)
+## Dos (19)
 
 | Exercice | Schéma | Alternatives, de la plus proche à la moins proche | Dépannage |
 |---|---|---|---|
@@ -61,10 +61,11 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 | **Pull-over à la poulie haute** | Pull-over (bras tendus) · Isolation | 1. Pull-over haltère | Tirage vertical |
 | **Soulevé de terre** *technique* | Charnière de hanche · Polyarticulaire | 1. Soulevé de terre à la barre hexagonale<br>2. Soulevé de terre sumo<br>3. Soulevé de terre roumain<br>4. Soulevé de terre roumain haltères | Extension lombaire au banc à 45° |
 | **Soulevé de terre à la barre hexagonale** | Charnière de hanche · Polyarticulaire | 1. Soulevé de terre *technique*<br>2. Soulevé de terre sumo<br>3. Soulevé de terre roumain<br>4. Soulevé de terre roumain haltères | – |
-| **Shrugs haltères** | Haussement d'épaules · Isolation | 1. Shrugs barre ou machine | Marche du fermier |
-| **Shrugs barre ou machine** | Haussement d'épaules · Isolation | 1. Shrugs haltères | Marche du fermier |
+| **Shrugs haltères** | Haussement d'épaules · Isolation | 1. Shrugs barre ou machine<br>2. Shrugs à la Smith machine | Marche du fermier |
+| **Shrugs à la Smith machine** | Haussement d'épaules · Isolation | 1. Shrugs barre ou machine<br>2. Shrugs haltères | Marche du fermier |
+| **Shrugs barre ou machine** | Haussement d'épaules · Isolation | 1. Shrugs haltères<br>2. Shrugs à la Smith machine | Marche du fermier |
 
-## Épaules (13)
+## Épaules (14)
 
 | Exercice | Schéma | Alternatives, de la plus proche à la moins proche | Dépannage |
 |---|---|---|---|
@@ -76,7 +77,8 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 | **Élévations latérales** | Abduction de l'épaule (élévation latérale) · Isolation | 1. Élévations latérales à la poulie *par bras*<br>2. Élévations latérales machine | Tirage menton (prise large) |
 | **Élévations latérales à la poulie** *par bras* | Abduction de l'épaule (élévation latérale) · Isolation | 1. Élévations latérales machine<br>2. Élévations latérales | Tirage menton (prise large) |
 | **Élévations latérales machine** | Abduction de l'épaule (élévation latérale) · Isolation | 1. Élévations latérales à la poulie *par bras*<br>2. Élévations latérales | Tirage menton (prise large) |
-| **Élévations frontales** | Élévation frontale · Isolation | *Aucune dans la banque* | Développé épaules haltères assis<br>Shoulder press (machine) |
+| **Élévations frontales** | Élévation frontale · Isolation | 1. Élévations frontales à la poulie | Développé épaules haltères assis<br>Shoulder press (machine) |
+| **Élévations frontales à la poulie** | Élévation frontale · Isolation | 1. Élévations frontales | Développé épaules haltères assis<br>Shoulder press (machine) |
 | **Oiseau haltères (buste penché)** | Écarté arrière (arrière d'épaule) · Isolation | 1. Oiseau à la machine (reverse pec deck)<br>2. Face pull à la poulie | – |
 | **Oiseau à la machine (reverse pec deck)** | Écarté arrière (arrière d'épaule) · Isolation | 1. Oiseau haltères (buste penché)<br>2. Face pull à la poulie | – |
 | **Face pull à la poulie** | Écarté arrière (arrière d'épaule) · Isolation | 1. Oiseau à la machine (reverse pec deck)<br>2. Oiseau haltères (buste penché) | – |
@@ -150,7 +152,7 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 | **Soulevé de terre roumain haltères** | Charnière de hanche · Polyarticulaire | 1. Soulevé de terre roumain<br>2. Good morning<br>3. Soulevé de terre *technique*<br>4. Soulevé de terre à la barre hexagonale | Extension lombaire au banc à 45° |
 | **Good morning** | Charnière de hanche · Polyarticulaire | 1. Soulevé de terre roumain<br>2. Soulevé de terre roumain haltères | Extension lombaire au banc à 45°<br>Machine lombaires |
 
-## Fessiers (8)
+## Fessiers (9)
 
 | Exercice | Schéma | Alternatives, de la plus proche à la moins proche | Dépannage |
 |---|---|---|---|
@@ -160,7 +162,8 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 | **Pont fessier** | Extension de hanche (fessiers) · Isolation | 1. Hip thrust<br>2. Hip thrust à la Smith machine<br>3. Hip thrust machine<br>4. Machine fessiers (kickback) *par jambe*<br>5. Kickback fessier à la poulie *par jambe* | – |
 | **Kickback fessier à la poulie** *par jambe* | Extension de hanche (fessiers) · Isolation | 1. Machine fessiers (kickback) *par jambe*<br>2. Hip thrust machine<br>3. Hip thrust à la Smith machine<br>4. Hip thrust<br>5. Pont fessier | – |
 | **Machine fessiers (kickback)** *par jambe* | Extension de hanche (fessiers) · Isolation | 1. Kickback fessier à la poulie *par jambe*<br>2. Hip thrust machine<br>3. Hip thrust à la Smith machine<br>4. Hip thrust<br>5. Pont fessier | – |
-| **Machine abducteurs** | Abduction de hanche · Isolation | *Aucune dans la banque* | Kickback fessier à la poulie (jambe tirée sur le côté, pas vers l'arrière) *par jambe* |
+| **Machine abducteurs** | Abduction de hanche · Isolation | 1. Abduction à la poulie basse *par jambe* | Montée sur banc (step-up) (sollicite aussi le moyen fessier) *par jambe* |
+| **Abduction à la poulie basse** *par jambe* | Abduction de hanche · Isolation | 1. Machine abducteurs | Montée sur banc (step-up) (sollicite aussi le moyen fessier) *par jambe* |
 | **Soulevé de terre sumo** | Charnière de hanche · Polyarticulaire | 1. Soulevé de terre *technique*<br>2. Soulevé de terre à la barre hexagonale<br>3. Soulevé de terre roumain<br>4. Soulevé de terre roumain haltères | – |
 
 ## Adducteurs (2)
@@ -233,16 +236,18 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 | **Thruster haltères** | Squat + poussée · Fonctionnel | 1. Wall ball | Goblet squat<br>Développé épaules haltères assis |
 | **Slam ball** | Lancer · Fonctionnel | *Aucune dans la banque* | Battle rope<br>Bûcheron à la poulie |
 
-## Exercices avec moins de 3 vraies alternatives (44)
+## Exercices avec moins de 3 vraies alternatives (47)
 
 - Pull-over haltère : 1 + 1 dépannage
 - Pull-over à la poulie haute : 1 + 1 dépannage
-- Shrugs haltères : 1 + 1 dépannage
-- Shrugs barre ou machine : 1 + 1 dépannage
+- Shrugs haltères : 2 + 1 dépannage
+- Shrugs à la Smith machine : 2 + 1 dépannage
+- Shrugs barre ou machine : 2 + 1 dépannage
 - Élévations latérales : 2 + 1 dépannage
 - Élévations latérales à la poulie : 2 + 1 dépannage
 - Élévations latérales machine : 2 + 1 dépannage
-- Élévations frontales : 0 + 2 dépannages
+- Élévations frontales : 1 + 2 dépannages
+- Élévations frontales à la poulie : 1 + 2 dépannages
 - Oiseau haltères (buste penché) : 2
 - Oiseau à la machine (reverse pec deck) : 2
 - Face pull à la poulie : 2
@@ -254,7 +259,8 @@ Le hip thrust et ses variantes sont classés en isolation : seule la hanche boug
 - Leg extension à la poulie basse : 2 + 2 dépannages
 - Sissy squat : 2 + 2 dépannages
 - Good morning : 2 + 2 dépannages
-- Machine abducteurs : 0 + 1 dépannage
+- Machine abducteurs : 1 + 1 dépannage
+- Abduction à la poulie basse : 1 + 1 dépannage
 - Machine adducteurs : 1 + 1 dépannage
 - Adduction à la poulie : 1 + 1 dépannage
 - Crunch : 2 + 1 dépannage

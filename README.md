@@ -33,7 +33,9 @@ Pas de framework, pas d'étape de compilation : les fichiers du dépôt sont ceu
 | `js/sauvegarde.js` | Fichier de sauvegarde, import, rappel des 30 jours |
 | `js/visuels.js` | Animations et schémas des muscles |
 | `js/logique.js` | Calculs : suggestions de charge, moyennes, courbes |
+| `js/seances.js` | Séances A, B et perso, séances prévues, code SPORTY-SEANCE-V1 (sans écran) |
 | `js/vues.js` | Les écrans |
+| `js/vues-seances.js` | Écrans des séances : onglet Séance, Mes séances, éditeur, journée, coller un code |
 | `js/app.js` | Navigation, boutons, démarrage |
 | `sw.js` | Mode hors connexion (service worker) |
 
@@ -43,6 +45,27 @@ Le reste de l'appli ne passe que par `Store` et n'a pas à changer.
 
 **Publier une mise à jour** : modifier `VERSION` en haut de `sw.js`, sinon les téléphones
 garderont l'ancienne version en mémoire.
+
+## Séances perso et code de partage
+
+- Réglages → **Mes séances** : créer, modifier, dupliquer, supprimer, copier le code.
+- Une séance se partage avec un texte qui commence par `SPORTY-SEANCE-V1` (format décrit dans `EXERCICES.md`).
+  Pour qu'une autre discussion Claude écrive une séance, lui donner `EXERCICES.md`.
+- « Coller une séance » (onglet Séance ou Mes séances) relit ce code.
+
+## Tests
+
+```bash
+npm test
+```
+
+Vérifie les alternatives et les séances (création, refus, historique, sauvegarde, code, dates prévues), sans navigateur.
+
+```bash
+npm run e2e
+```
+
+Rejoue les parcours dans un iPhone simulé (nécessite Playwright).
 
 ## Alternatives
 
@@ -58,6 +81,7 @@ node outils/alternatives-md.js
 ```
 
 Le premier vérifie les règles, le second régénère `ALTERNATIVES.md`, la version lisible.
+`npm run docs` régénère `ALTERNATIVES.md` et `EXERCICES.md` d'un coup.
 
 ## Tester en local
 

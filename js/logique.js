@@ -78,14 +78,6 @@ function avgBetween(fromD,toD){const xs=S.weights.filter(w=>{const d=pkey(w.date
 function rolling(){const ws=sortedWeights();return ws.map(w=>{const d=pkey(w.date),from=addDays(d,-6);const xs=ws.filter(x=>{const dx=pkey(x.date);return dx>=from&&dx<=d;}).map(x=>x.kg);return{date:w.date,kg:xs.reduce((a,b)=>a+b,0)/xs.length};});}
 const dayData=k=>S.days.find(d=>d.date===k)||null;
 function tapisMin(s){let m=0;if(s.tapis&&s.tapis.min)m+=s.tapis.min;if(s.ex&&s.ex.tapis)s.ex.tapis.forEach(x=>m+=x.r||0);return m;}
-/* Mon programme : listes A et B modifiables (sinon celles d'origine). */
-function planEx(t){
-  const p=S.settings.programme&&S.settings.programme[t];
-  return (Array.isArray(p)?p:(PLANS[t]?PLANS[t].ex:[])).filter(id=>EX[id]);
-}
-function setPlanEx(t,list){
-  S.settings.programme=Object.assign({},S.settings.programme,{[t]:list});Store.saveSettings();
-}
 /* Exercices masqués de la banque. */
 const isHidden=id=>(S.settings.hidden||[]).includes(id);
 function setHidden(id,on){

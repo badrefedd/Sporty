@@ -8,7 +8,7 @@ const RAPPEL_JOURS=30;
 
 function nomFichierSauvegarde(){return `sporty-sauvegarde-${dkey()}.json`;}
 function contenuSauvegarde(){
-  return JSON.stringify({app:'sporty',version:3,exporte_le:new Date().toISOString(),seances:S.sessions,pesees:S.weights,activite:S.days,reglages:S.settings},null,1);
+  return JSON.stringify({app:'sporty',version:4,exporte_le:new Date().toISOString(),seances:S.sessions,pesees:S.weights,activite:S.days,reglages:S.settings,modeles:S.modeles||[],prevues:S.plans||[]},null,1);
 }
 function marquerSauvegarde(){S.meta.lastBackup=Date.now();delete S.meta.snooze;Store.saveMeta();}
 
@@ -41,14 +41,20 @@ function lireSauvegarde(txt){
   let o;
   try{o=JSON.parse(String(txt).replace(/^﻿/,'').trim());}catch(e){throw new Error('Ce fichier n\'est pas une sauvegarde Sporty lisible.');}
   if(!o||typeof o!=='object'||Array.isArray(o))throw new Error('Ce fichier n\'est pas une sauvegarde Sporty.');
-  const has=['seances','pesees','activite','reglages'].some(k=>k in o);
+  const has=['seances','pesees','activite','reglages','modeles','prevues'].some(k=>k in o);
   if(!has)throw new Error('Ce fichier ne contient ni séances, ni pesées, ni activité.');
   const arr=x=>Array.isArray(x)?x:[];
   const seances=arr(o.seances).filter(s=>s&&typeof s==='object'&&s.type&&isDate(s.date)).map(s=>Object.assign({},s,{id:s.id?String(s.id):uid()}));
   const pesees=arr(o.pesees).map(w=>w&&{date:w.date,kg:typeof w.kg==='number'?w.kg:num(w.kg)}).filter(w=>w&&isDate(w.date)&&w.kg>=30&&w.kg<=300);
   const activite=arr(o.activite).filter(d=>d&&isDate(d.date)).map(d=>{const x={date:d.date};if(typeof d.steps==='number')x.steps=d.steps;if(typeof d.kcal==='number')x.kcal=d.kcal;return x;}).filter(d=>d.steps!=null||d.kcal!=null);
   const reglages=o.reglages&&typeof o.reglages==='object'&&!Array.isArray(o.reglages)?o.reglages:null;
-  return {seances,pesees,activite,reglages,date:o.exporte_le||null,version:o.version||2};
+  /* v4 : séances perso et dates prévues (absentes des sauvegardes plus anciennes). */
+  const modeles=arr(o.modeles).filter(m=>m&&typeof m==='object'&&m.id&&m.nom&&Array.isArray(m.ex)).map(m=>({
+    id:String(m.id),nom:String(m.nom),badge:badgeNorm(m.badge)||'?',couleur:COULEURS[m.couleur]?m.couleur:'orange',
+    desc:String(m.desc||''),tapis:m.tapis!==false,jours:arr(m.jours).map(Number).filter(d=>d>=1&&d<=7),
+    ex:m.ex.filter(l=>l&&typeof l==='object'&&l.id).map(l=>Object.assign({},l,{id:String(l.id)}))}));
+  const prevues=arr(o.prevues).filter(p=>p&&p.id&&isDate(p.date)&&p.modele).map(p=>({id:String(p.id),date:p.date,modele:String(p.modele)}));
+  return {seances,pesees,activite,reglages,modeles,prevues,date:o.exporte_le||null,version:o.version||2};
 }
 
 let importEnAttente=null;
@@ -75,6 +81,8 @@ function apercuImport(r){
       <li>${n(r.seances.length,'séance','séances')}</li>
       <li>${n(r.pesees.length,'pesée','pesées')}</li>
       <li>${n(r.activite.length,'jour d\'activité','jours d\'activité')}</li>
+      ${r.modeles.length?`<li>${n(r.modeles.length,'séance perso','séances perso')}</li>`:''}
+      ${r.prevues.length?`<li>${n(r.prevues.length,'séance prévue à une date','séances prévues à une date')}</li>`:''}
       <li>${r.reglages?'Tes réglages (thème, jours, objectif, alternatives, exercices perso)':'Pas de réglages'}</li>
     </ul>
     ${d&&!isNaN(d)?`<p class="small muted" style="margin:0">Sauvegarde du ${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}.</p>`:''}
@@ -87,17 +95,32 @@ function apercuImport(r){
 function erreurImport(msg){$('#importres').innerHTML=`<p class="hint" style="color:var(--danger)">${esc(msg)}</p>`;}
 function lireTexteImport(txt){try{apercuImport(lireSauvegarde(txt));}catch(e){erreurImport(e.message);}}
 
+/* Ajoute les séances perso et dates prévues du fichier ; un badge déjà pris par une autre séance est remplacé. */
+function fusionnerSeancesPerso(r){
+  const mm=new Map((S.modeles||[]).map(m=>[m.id,m]));
+  r.modeles.forEach(m=>{mm.set(m.id,Object.assign({},m));});
+  S.modeles=[];
+  for(const m of mm.values()){
+    const pris=badgesPris(null);
+    if(!m.badge||m.badge.length>2||BADGES_RESERVES[m.badge]||pris[m.badge])m.badge=badgeLibre(null);
+    S.modeles.push(m);
+  }
+  const pm=new Map((S.plans||[]).map(p=>[p.id,p]));r.prevues.forEach(p=>pm.set(p.id,p));S.plans=[...pm.values()];
+}
 async function appliquerImport(remplacer){
   const r=importEnAttente;if(!r)return;
-  const avant=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days});
+  const avant=clone({settings:S.settings,sessions:S.sessions,weights:S.weights,days:S.days,modeles:S.modeles||[],plans:S.plans||[]});
   /* Appli encore vide (premier import) : on reprend aussi le thème, les jours et l'objectif du fichier. */
   const vide=!S.sessions.length&&!S.weights.length&&!S.days.length;
   if(remplacer||vide){
     S.sessions=r.seances;S.weights=r.pesees;S.days=r.activite;
+    if(remplacer){S.modeles=r.modeles;S.plans=r.prevues;}
+    else fusionnerSeancesPerso(r);
     if(r.reglages)S.settings=Object.assign({theme:'auto',plan:'1',goal:72,videos:{},alts:{},custom:[]},r.reglages);
   }else{
     const byId=new Map(S.sessions.map(s=>[s.id,s]));r.seances.forEach(s=>byId.set(s.id,s));S.sessions=[...byId.values()];
     const wm=new Map(S.weights.map(w=>[w.date,w]));r.pesees.forEach(w=>wm.set(w.date,w));S.weights=[...wm.values()];
+    fusionnerSeancesPerso(r);
     const dm=new Map(S.days.map(d=>[d.date,d]));r.activite.forEach(d=>dm.set(d.date,Object.assign({},dm.get(d.date),d)));S.days=[...dm.values()];
     if(r.reglages){
       const g=r.reglages,cur=S.settings;

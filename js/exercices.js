@@ -40,6 +40,7 @@ const BANK=[
 ['sdt','Soulevé de terre','dos','Barre','kg','Dos, Fessiers, Ischio-jambiers','Barre contre les tibias, dos bien droit|Pousse le sol avec les jambes, la barre frôle les jambes|Ne t\'arrondis jamais le dos : baisse la charge si besoin','H'],
 ['sdt_trapbar','Soulevé de terre à la barre hexagonale','dos','Barre hexagonale','kg','Cuisses, Fessiers, Dos','Place-toi au centre de la barre|Dos droit, pousse le sol avec les jambes|Plus facile à apprendre que la barre droite','H'],
 ['shrug_halt','Shrugs haltères','dos','Haltères','kg','Trapèzes','Bras tendus le long du corps|Monte les épaules vers les oreilles|Pas de rotation des épaules'],
+['shrug_smith','Shrugs à la Smith machine','dos','Smith machine','kg','Trapèzes','Barre de la Smith à mi-cuisses, prise largeur d\'épaules|Monte les épaules vers les oreilles, bras tendus|Marque 1 seconde en haut, redescends lentement'],
 ['shrug_barre','Shrugs barre ou machine','dos','Barre','kg','Trapèzes','Prise largeur d\'épaules|Monte les épaules et marque 1 seconde|Redescends lentement'],
 
 ['dm_halt','Développé épaules haltères assis','epaules','Haltères','kg','Épaules, Triceps','Dossier presque vertical|Haltères à hauteur des oreilles au départ|Pousse sans cambrer le bas du dos','H'],
@@ -51,6 +52,7 @@ const BANK=[
 ['lat_poulie','Élévations latérales à la poulie','epaules','Poulie','kg','Deltoïde moyen','Poulie basse, câble devant ou derrière toi|Monte le bras sur le côté jusqu\'à hauteur d\'épaule|Un bras à la fois, sans élan'],
 ['lat_machine','Élévations latérales machine','epaules','Machine','kg','Deltoïde moyen','Épaules alignées avec l\'axe de la machine|Pousse avec les coudes, pas les mains|Redescends lentement'],
 ['front_raise','Élévations frontales','epaules','Haltères','kg','Avant des épaules','Bras presque tendus|Monte jusqu\'à hauteur des yeux|Pas d\'élan avec le buste'],
+['front_raise_poulie','Élévations frontales à la poulie','epaules','Poulie','kg','Avant des épaules','Poulie basse, dos au poste, câble entre les jambes|Bras presque tendus, monte jusqu\'à hauteur des yeux|Pas d\'élan avec le buste, redescends lentement'],
 ['oiseau','Oiseau haltères (buste penché)','epaules','Haltères','kg','Arrière des épaules','Buste penché presque à l\'horizontale, dos droit|Écarte les bras sur les côtés, coudes légèrement fléchis|Charge légère'],
 ['rear_delt','Oiseau à la machine (reverse pec deck)','epaules','Machine','kg','Arrière des épaules, Haut du dos','Face à la machine, poitrine contre le dossier|Ouvre les bras vers l\'arrière, coudes à hauteur d\'épaules|Marque 1 seconde en arrière'],
 ['face_pull','Face pull à la poulie','epaules','Poulie','kg','Arrière des épaules, Haut du dos','Corde à hauteur du visage|Tire vers le front en écartant les mains|Coudes hauts, serre les omoplates'],
@@ -111,6 +113,7 @@ const BANK=[
 ['kickback_poulie','Kickback fessier à la poulie','fessiers','Poulie','kg','Fessiers','Sangle à la cheville, poulie basse|Tends la jambe vers l\'arrière sans cambrer|Compte les répétitions par jambe'],
 ['glute_machine','Machine fessiers (kickback)','fessiers','Machine','kg','Fessiers','Avant-bras et genou en appui|Pousse la jambe vers l\'arrière et le haut|Contrôle le retour'],
 ['abducteurs','Machine abducteurs','fessiers','Machine','kg','Fessier moyen','Dos contre le dossier|Écarte les jambes et marque 1 seconde|Penche-toi un peu en avant pour viser les fessiers'],
+['abduc_poulie','Abduction à la poulie basse','fessiers','Poulie (sangle cheville)','kg','Moyen fessier','Sangle à la cheville extérieure, de profil par rapport à la poulie|Tiens-toi au poste, buste droit|Écarte la jambe sur le côté sans pencher le buste, reviens lentement'],
 ['sdt_sumo','Soulevé de terre sumo','fessiers','Barre','kg','Fessiers, Cuisses, Adducteurs','Pieds très écartés, pointes vers l\'extérieur|Mains à l\'intérieur des jambes|Dos droit, pousse le sol','H'],
 
 ['adducteurs','Machine adducteurs','adducteurs','Machine','kg','Adducteurs','Dos contre le dossier|Serre les jambes et marque 1 seconde|Ouvre lentement sans forcer l\'écart'],
@@ -219,6 +222,6 @@ const DAYS_LONG=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanch
 const MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const MONTHS_LONG=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const TABS=['semaine','seance','exos','historique','poids','reglages'];
-const ROUTES=TABS.concat(['mois','programme']);
+const ROUTES=TABS.concat(['mois','seances','seance-edit']);
 const STEP_GOAL=10000;
 

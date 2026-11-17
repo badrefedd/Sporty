@@ -5,5 +5,5 @@ module.exports=function charger(){
   for(const f of ['js/exercices.js','js/alternatives.js'])
     vm.runInContext(fs.readFileSync(path.join(__dirname,'..',f),'utf8'),ctx,{filename:f});
   vm.runInContext('buildEx()',ctx);
-  return vm.runInContext('({BANK,EX,GROUPS,MOUV,ALT,SCHEMAS,TYPES,parseAlt,memePoste,altTags})',ctx);
+  return vm.runInContext('({BANK,EX,GROUPS,MODES,MOUV,ALT,SCHEMAS,TYPES,parseAlt,memePoste,altTags})',ctx);
 };

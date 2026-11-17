@@ -514,3 +514,48 @@ details summary{list-style-position:inside}
 .tags .t-technique{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
 .tags .t-perso,.tags .t-par-bras,.tags .t-par-jambe{background:color-mix(in srgb,var(--accent-2) 12%,transparent);color:var(--accent-2)}
 .tags .t-depannage{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)}
+
+/* ---------- v3 : séances perso ---------- */
+.c-orange{--bc:var(--accent)}.c-bleu{--bc:var(--accent-2)}.c-violet{--bc:var(--accent-3)}.c-rouge{--bc:var(--danger)}
+.c-jaune{--bc:var(--warn)}.c-rose{--bc:#D6337F}.c-gris{--bc:#6B7280}.c-noir{--bc:var(--ink)}
+.badge[class*="c-"]{background:var(--bc);color:#fff}
+.badge.c-noir{color:var(--bg)}
+.badge.out{background:transparent;color:var(--bc);box-shadow:inset 0 0 0 2px var(--bc)}
+.badge.passe{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 2px var(--line)}
+.dbadges{display:flex;flex-direction:column;align-items:center;gap:5px}
+.bwrap{position:relative;display:inline-flex}
+.bwrap .ok{position:absolute;right:-6px;bottom:-5px;width:15px;height:15px;border-radius:50%;background:var(--surface);color:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1.5px var(--surface)}
+.bwrap .ok svg{width:11px;height:11px;stroke-width:3.5}
+.mb i[class*="c-"]{background:var(--bc);color:#fff;position:relative}
+.mb i.c-noir{color:var(--bg)}
+.mb i.prevu{background:transparent;color:var(--bc);box-shadow:inset 0 0 0 1.5px var(--bc)}
+.mb i.passe{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--line)}
+.mb i.fait::after{content:"✓";position:absolute;right:-4px;bottom:-5px;font-size:9px;line-height:1;color:var(--ink);background:var(--surface);border-radius:50%;padding:1px}
+.hero[class*="c-"]{background:linear-gradient(135deg,var(--bc) 0%,color-mix(in srgb,var(--bc) 62%,#120c2a) 100%)}
+.hero.c-noir{background:linear-gradient(135deg,#2B3352 0%,#151A2D 100%)}
+.choice .scard{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:5px;min-height:128px;color:var(--ink);font:inherit;cursor:pointer}
+.scard .badge{align-self:flex-start}
+.scard b{font-family:var(--font-display);font-size:21px;font-weight:800;line-height:1.1}
+.mseance .badge{flex:none;margin-top:2px}
+.mseance-act{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn.rm,.btn .rm{color:var(--danger)}
+.ed-ex{border-bottom:1px solid var(--line);padding:8px 0 12px;display:flex;flex-direction:column;gap:8px}
+.ed-f{display:grid;grid-template-columns:1fr 1fr 1fr 1.3fr;gap:6px}
+.ed-f label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--muted)}
+.ed-f input,.ed-f select{height:42px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--ink);font:inherit;font-size:16px;font-weight:700;padding:0 8px;width:100%;min-width:0}
+.ed-ex .prog-row .x,.ed-ex .x{width:38px;height:40px;flex:none}
+.ed-ex .x:disabled{opacity:.25}
+.couleurs{display:flex;flex-wrap:wrap;gap:8px}
+.pastille{width:34px;height:34px;border-radius:50%;border:0;background:var(--bc);cursor:pointer}
+.pastille.on{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--bc)}
+.jours{display:flex;flex-wrap:wrap;gap:6px}
+.prevu{border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.imp-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.imp-l{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);align-items:center}
+.imp-l:last-child{border-bottom:0}
+.imp-l.ko{flex-direction:column;align-items:stretch;background:color-mix(in srgb,var(--danger) 9%,transparent);color:var(--danger)}
+.imp-l.ign{color:var(--muted);text-decoration:line-through}
+.btn:disabled{opacity:.45}
+
+/* Un élément caché reste caché, quel que soit son style. */
+[hidden]{display:none!important}

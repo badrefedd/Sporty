@@ -6,8 +6,8 @@ function vueSeg(cur){
 }
 function draftBanner(){
   if(!S.draft||S.route==='seance')return '';
-  const p=PLANS[S.draft.type];const st=new Date(S.draft.start);
-  return `<div class="banner"><span class="badge ${S.draft.type}">${S.draft.type}</span><div><b>${p.title} en cours</b><div class="small muted">Commencée à ${st.getHours()} h ${pad(st.getMinutes())}</div></div><div class="spacer"></div><a class="btn sm primary" href="#seance">Reprendre</a></div>`;
+  const info=S.draft.info||infoModele(S.draft.type);const st=new Date(S.draft.start);
+  return `<div class="banner">${badgeHTML(info)}<div><b>${esc(info.nom)} en cours</b><div class="small muted">Commencée à ${st.getHours()} h ${pad(st.getMinutes())}</div></div><div class="spacer"></div><a class="btn sm primary" href="#seance">Reprendre</a></div>`;
 }
 function stripes(){return `<svg class="stripes" viewBox="0 0 100 100" aria-hidden="true"><path d="M58 4 30 54h18l-9 42 31-56H52l10-36z" fill="#fff"/></svg>`;}
 function activityCard(){
@@ -27,25 +27,27 @@ function activityCard(){
 }
 function viewSemaine(){
   const ws=weekStart(),opt=WEEK_OPTS[S.settings.plan]||WEEK_OPTS['1'],st=weekStatus(ws),today=dkey();
+  const items=semaineItems(ws),obj=objectifSemaine(ws);
   let strip='';
   for(let i=0;i<7;i++){
-    const d=addDays(ws,i),k=dkey(d),plan=opt.days[i+1];
-    const done=plan&&st[plan];
-    const extra=S.sessions.some(s=>s.date===k&&s.type==='L');
-    strip+=`<button class="day ${k===today?'today':''}" data-act="day" data-date="${k}" aria-label="${DAYS_LONG[i]} ${d.getDate()}"><span class="dname">${DAYS[i]}</span><span class="dnum">${d.getDate()}</span>
-      ${plan?`<span class="badge ${plan}">${plan==='five'?'5':plan}</span>`:extra?`<span class="badge L">L</span>`:`<span class="badge rest">–</span>`}
-      ${plan?`<span class="mark ${done?'done':'todo'}">${done?I.check:''}</span>`:extra?`<span class="mark done">${I.check}</span>`:'<span class="mark"></span>'}</button>`;
+    const d=addDays(ws,i),k=dkey(d),its=items.filter(x=>x.date===k);
+    const b=its.map(it=>{const info=it.ses?infoSeance(it.ses):infoModele(it.modele);return `<span class="bwrap">${badgeHTML(info,it.etat==='fait'?'fait':it.etat==='passe'?'passe':'out')}${it.etat==='fait'?`<i class="ok">${I.check}</i>`:''}</span>`;}).join('');
+    const lab=its.map(it=>{const info=it.ses?infoSeance(it.ses):infoModele(it.modele);return `${info.nom} ${it.etat==='fait'?'faite':it.etat==='passe'?'non faite':'prévue'}`;}).join(', ');
+    strip+=`<button class="day ${k===today?'today':''}" data-act="day" data-date="${k}" aria-label="${DAYS_LONG[i]} ${d.getDate()}${lab?' : '+esc(lab):''}"><span class="dname">${DAYS[i]}</span><span class="dnum">${d.getDate()}</span>
+      <span class="dbadges">${b||'<span class="badge rest">–</span>'}</span></button>`;
   }
   const next=!st.A?'A':!st.B?'B':null;
   let hero;
   if(S.draft){
-    const p=PLANS[S.draft.type];
-    hero=`<section class="card hero ${S.draft.type==='B'?'B':''}"><div class="eyebrow">Séance en cours</div><h2>${p.title}</h2><ul>${(S.draft.list||[]).map(id=>EX[id]?`<li>${esc(EX[id].name)}</li>`:'').join('')}</ul><a class="btn block" href="#seance">Reprendre la séance</a>${stripes()}</section>`;
+    const info=S.draft.info||infoModele(S.draft.type);
+    hero=`<section class="card hero c-${info.couleur}"><div class="eyebrow">Séance en cours</div><h2>${esc(info.nom)}</h2><ul>${(S.draft.list||[]).map(id=>EX[id]?`<li>${esc(EX[id].name)}</li>`:'').join('')}</ul><a class="btn block" href="#seance">Reprendre la séance</a>${stripes()}</section>`;
   }else if(next){
-    const p=PLANS[next],dayIdx=Object.keys(opt.days).find(k=>opt.days[k]===next);
-    hero=`<section class="card hero ${next}"><div class="eyebrow">Prochaine séance · prévue ${DAYS_LONG[dayIdx-1]}</div><h2>${p.title}</h2><div style="font-weight:600;opacity:.9">${p.sub} · environ 45 min + 20 min de tapis</div><ul>${planEx(next).map(id=>`<li>${esc(EX[id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
+    const p=modeleAB(next),dayIdx=Object.keys(opt.days).find(k=>opt.days[k]===next);
+    hero=`<section class="card hero c-${p.couleur}"><div class="eyebrow">Prochaine séance${dayIdx?' · prévue '+DAYS_LONG[dayIdx-1]:''}</div><h2>${esc(p.nom)}</h2><div style="font-weight:600;opacity:.9">${esc(p.desc)} · environ ${dureeEstimee(p)} min</div><ul>${p.ex.map(l=>`<li>${esc(EX[l.id].name)}</li>`).join('')}</ul><button class="btn block" data-act="start" data-type="${next}">Démarrer la séance ${next}</button>${stripes()}</section>`;
   }else{
-    hero=`<section class="card hero done"><div class="eyebrow">Semaine</div><h2>Salle validée !</h2><div style="font-weight:600;opacity:.9">${st.five?'Les 2 séances et le Five sont faits. Repos et marche jusqu\'à lundi.':'Les 2 séances sont faites. Il reste le Five vendredi.'}</div>${stripes()}</section>`;
+    const reste=obj.total-obj.faites;
+    if(reste>0)hero=`<section class="card hero done"><div class="eyebrow">Semaine</div><h2>A et B faites !</h2><div style="font-weight:600;opacity:.9">Encore ${reste} séance${reste>1?'s':''} prévue${reste>1?'s':''} cette semaine. Touche un jour pour la démarrer.</div>${stripes()}</section>`;
+    else hero=`<section class="card hero done"><div class="eyebrow">Semaine</div><h2>Salle validée !</h2><div style="font-weight:600;opacity:.9">${st.five?'Les 2 séances et le Five sont faits. Repos et marche jusqu\'à lundi.':'Les 2 séances sont faites. Il reste le Five vendredi.'}</div>${stripes()}</section>`;
   }
   const now=new Date(),mStart=new Date(now.getFullYear(),now.getMonth(),1);
   const monthCount=S.sessions.filter(s=>s.type!=='five'&&s.date&&pkey(s.date)>=mStart).length;
@@ -57,12 +59,12 @@ function viewSemaine(){
   ${rappelSauvegarde()}
   <div><div class="eyebrow">Semaine du ${ws.getDate()} ${MONTHS[ws.getMonth()]}</div><h1 class="title-xl">Ton programme</h1></div>
   <div class="week" role="list" aria-label="Programme de la semaine">${strip}</div>
-  <p class="small muted" style="margin:-6px 0 0">${esc(opt.label)} + Five le vendredi. ${esc(opt.note)}</p>
+  <p class="small muted" style="margin:-6px 0 0">${obj.total?`<b>Objectif de la semaine : ${obj.faites}/${obj.total} séance${obj.total>1?'s':''}.</b> `:''}${esc(opt.label)} + Five le vendredi. Touche un jour pour prévoir une séance.</p>
   ${hero}
   ${!S.draft?`<div class="row">
-    <button class="btn ghost" style="flex:1" data-act="start" data-type="${other}"><span class="badge ${other}">${other}</span> Faire la ${other}</button>
-    <button class="btn ghost" style="flex:1" data-act="start" data-type="L"><span class="badge L">L</span> Séance libre</button></div>`:''}
-  <button class="btn ghost block" data-act="five"><span class="badge five">5</span> ${st.five?'Five noté cette semaine':'Noter le Five'}</button>
+    <button class="btn ghost" style="flex:1" data-act="start" data-type="${other}">${badgeHTML(infoModele(other))} Faire la ${other}</button>
+    <a class="btn ghost" style="flex:1" href="#seance">Autre séance</a></div>`:''}
+  <button class="btn ghost block" data-act="five">${badgeHTML(infoModele('five'))} ${st.five?'Five noté cette semaine':'Noter le Five'}</button>
   ${activityCard()}
   <div class="tiles">
     <a class="tile" href="#mois" style="text-decoration:none;color:inherit"><div class="l">Séances ce mois-ci</div><div class="v num">${monthCount}</div></a>
@@ -75,13 +77,16 @@ function viewCalendrier(){
   if(!S.cal){const n=new Date();S.cal={y:n.getFullYear(),m:n.getMonth()};}
   const {y,m}=S.cal,first=new Date(y,m,1),last=new Date(y,m+1,0),today=dkey();
   let d=weekStart(first),cells=DAYS.map(x=>`<div class="dh">${x}</div>`).join('');
+  const calItems={};
+  for(let x=weekStart(first);x<=last;x=addDays(x,7))semaineItems(x).forEach(it=>{(calItems[it.date]=calItems[it.date]||[]).push(it);});
   while(d<=last||(d.getDay()+6)%7!==0){
     const k=dkey(d),out=d.getMonth()!==m;
-    const ses=S.sessions.filter(s=>s.date===k);
+    const its=calItems[k]||[];
     const w=S.weights.find(x=>x.date===k),act=dayData(k);
-    cells+=`<button class="cal-cell ${out?'out':''} ${k===today?'today':''}" data-act="day" data-date="${k}" aria-label="${fmtDate(k)}${ses.length?', '+ses.map(s=>typeTitle(s.type)).join(', '):''}">
+    const nm=it=>(it.ses?infoSeance(it.ses):infoModele(it.modele));
+    cells+=`<button class="cal-cell ${out?'out':''} ${k===today?'today':''}" data-act="day" data-date="${k}" aria-label="${fmtDate(k)}${its.length?', '+its.map(it=>nm(it).nom+(it.etat==='fait'?' faite':it.etat==='passe'?' non faite':' prévue')).join(', '):''}">
       <span class="n">${d.getDate()}${w?'<span class="wd" aria-hidden="true"></span>':''}</span>
-      <span class="mb">${ses.map(s=>`<i class="${s.type}">${typeBadge(s.type)}</i>`).join('')}</span>
+      <span class="mb">${its.map(it=>{const info=nm(it);return `<i class="c-${esc(info.couleur)} ${it.etat}">${esc(info.badge)}</i>`;}).join('')}</span>
       ${act&&act.steps!=null?`<span class="st">${act.steps>=1000?fmt1(act.steps/1000)+'k':act.steps} pas</span>`:''}</button>`;
     d=addDays(d,1);
     if(d>last&&(d.getDay()+6)%7===0)break;
@@ -111,31 +116,7 @@ function viewCalendrier(){
   </div>
   <p class="small muted" style="margin:0">Touche un jour pour voir le détail ou ajouter tes pas et tes kcal.</p>`;
 }
-function daySheet(k){
-  const ses=S.sessions.filter(s=>s.date===k).sort((a,b)=>(a.ts||0)-(b.ts||0));
-  const w=S.weights.find(x=>x.date===k),act=dayData(k)||{};
-  const future=k>dkey();
-  openModal(`<div class="sheet-head"><div><div class="eyebrow">Journée</div><h2 class="title-l" style="text-transform:capitalize">${fmtDate(k)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
-    ${ses.length?ses.map(s=>`<div class="card" style="box-shadow:none;padding:12px"><div class="row"><span class="badge ${s.type}">${typeBadge(s.type)}</span><b>${typeTitle(s.type)}</b><span class="small muted">${s.type==='five'?(s.min||60)+' min':(s.dur||'?')+' min'}</span></div>
-      ${s.ex?`<div class="hist-detail" style="border:0;padding-top:8px">${Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(exLabel(id,s))}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join('')}${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} %</b></div>`:''}</div>`:''}
-      ${s.note?`<div class="small muted">${esc(s.note)}</div>`:''}</div>`).join(''):`<p class="muted" style="margin:0">${future?'Rien de prévu dans l\'historique pour ce jour.':'Pas de séance ce jour-là.'}</p>`}
-    ${w?`<div class="row"><span class="pill">Pesée : ${fmt(w.kg)} kg</span></div>`:''}
-    ${future?'':`<div class="stack" style="gap:8px"><h3 class="title-m">Activité (app Forme)</h3>
-      <div class="row"><label class="fld" style="flex:1"><input id="dsteps" inputmode="numeric" placeholder="0" value="${act.steps!=null?act.steps:''}" aria-label="Nombre de pas"><span>pas</span></label>
-      <label class="fld" style="flex:1"><input id="dkcal" inputmode="numeric" placeholder="0" value="${act.kcal!=null?act.kcal:''}" aria-label="Kcal actives"><span>kcal</span></label></div>
-      <button class="btn primary block" data-act="saveday" data-date="${k}">Enregistrer l'activité</button></div>`}`);
-}
-
 /* ---------- Views: session ---------- */
-function viewChoose(){
-  const st=weekStatus();
-  const c=t=>{const p=PLANS[t];return `<button data-act="start" data-type="${t}"><span class="badge ${t}">${t}</span><b>${p.title}</b><span class="small muted">${p.sub}</span><span class="small">${t==='L'?'Ajoute les exos de ton choix':st[t]?'Faite cette semaine':'À faire cette semaine'}</span></button>`;};
-  return `<div><div class="eyebrow">Séance</div><h1 class="title-xl">Quelle séance ?</h1></div>
-  <div class="choice">${c('A')}${c('B')}</div>
-  <div class="choice">${c('L')}<button data-act="five"><span class="badge five">5</span><b>Five</b><span class="small muted">Foot du vendredi</span><span class="small">${st.five?'Noté cette semaine':'À noter'}</span></button></div>
-  <section class="card stack"><h2 class="title-m">Les règles</h2>
-  <ul class="cues"><li>Repos de 1 min 30 à 2 min sur les gros exercices, 1 min sur les petits. Le minuteur se lance tout seul quand tu valides une série.</li><li>Quand tu atteins le haut de la fourchette sur toutes les séries, Sporty te propose de monter la charge.</li><li>Machine prise ? Touche « Alternative » sur l'exercice.</li><li>Séance ratée : fais celle qui manque à la prochaine occasion, sans rattraper.</li></ul></section>`;
-}
 function exCard(id){
   const e=rx(id),d=S.draft,sets=d.sets[id]||[],sg=suggest(id),F=fieldsFor(id);
   const allDone=sets.length&&sets.every(x=>x.done);
@@ -165,42 +146,35 @@ function migrateDraft(d){
 }
 function viewSeance(){
   if(!S.draft)return viewChoose();
-  const d=S.draft,p=PLANS[d.type];
+  const d=S.draft,info=d.info||infoModele(d.type),p=modeleParId(d.type);
   const total=d.list.reduce((a,id)=>a+(d.sets[id]||[]).length,0),done=d.list.reduce((a,id)=>a+(d.sets[id]||[]).filter(x=>x.done).length,0);
   const st=new Date(d.start);
-  return `<div class="session-head"><div><div class="eyebrow">${esc(p.sub)} · depuis ${st.getHours()} h ${pad(st.getMinutes())}</div><h1 class="title-xl"><span class="badge ${d.type}" style="vertical-align:middle;margin-right:6px">${d.type}</span>${p.title}</h1></div><div class="small muted num" style="text-align:right">${done}/${total}<br>séries</div></div>
+  return `<div class="session-head"><div><div class="eyebrow">${p&&p.desc?esc(p.desc)+' · ':''}depuis ${st.getHours()} h ${pad(st.getMinutes())}</div><h1 class="title-xl">${badgeHTML(info)} ${esc(info.nom)}</h1></div><div class="small muted num" style="text-align:right">${done}/${total}<br>séries</div></div>
   <div class="progress" aria-hidden="true"><i style="width:${total?done/total*100:0}%"></i></div>
   <div class="row"><button class="btn sm ghost" style="flex:1" data-act="stop">${I.stop} Arrêter et enregistrer</button><button class="btn sm danger" style="flex:1" data-act="abandon">${I.x} Annuler la séance</button></div>
   ${d.list.length?d.list.map(exCard).join(''):'<div class="empty">Ajoute ton premier exercice avec le bouton ci-dessous.</div>'}
   <button class="btn ghost block" data-act="addex">${I.plus} Ajouter un exercice</button>
   <button class="btn primary block" data-act="finish">Terminer la séance</button>`;
 }
-function startSession(type){
-  if(S.draft){location.hash='seance';return;}
-  const list=planEx(type).slice();if(type!=='L'&&!list.includes('tapis'))list.push('tapis');
-  S.draft={type,start:Date.now(),list,sets:{},from:{},rx:{}};
-  const sets=S.draft.sets;list.forEach(id=>{sets[id]=initSets(id);});
-  if(type!=='L'){const thu=new Date().getDay()===4;if(S.settings.plan==='3'&&thu&&type==='B')sets.tapis[0].w='9';}
-  Store.saveDraft();
+function startSession(type,opts={}){
+  if(S.draft){location.hash='seance';toast('Une séance est déjà en cours.');return;}
+  if(type!=='L'&&!modeleParId(type)){toast('Séance introuvable.');return;}
+  demarrerSeance(type,opts);
   if(location.hash==='#seance')render();else location.hash='seance';
   window.scrollTo(0,0);
   if(type==='L')setTimeout(()=>openPicker({mode:'add'}),150);
 }
 function finishSession(){
-  const d=S.draft;if(!d)return;
-  const ex={};let n=0,vol=0;
-  d.list.forEach(id=>{const s=(d.sets[id]||[]).filter(x=>x.done).map(x=>({w:num(x.w)||0,r:num(x.r)||0}));if(s.length){ex[id]=s;n+=s.length;if(EX[id].mode==='kg')s.forEach(x=>vol+=x.w*x.r);}});
-  if(!n){toast('Valide au moins une série, ou annule la séance.');return;}
-  const ses={id:uid(),type:d.type,date:dkey(new Date(d.start)),ts:d.start,dur:Math.max(1,Math.round((Date.now()-d.start)/60000)),ex};
-  const rem={};Object.keys(ex).forEach(id=>{if(d.from&&d.from[id])rem[id]=d.from[id];});if(Object.keys(rem).length)ses.remplace=rem;
-  const records=Object.keys(ex).filter(id=>{if(EX[id].mode!=='kg')return false;const prev=maxEver(id);const best=Math.max(...ex[id].map(x=>x.w));return prev>0&&best>prev;});
-  S.sessions.push(ses);S.draft=null;Timer.stop();
-  Store.saveSession(ses);Store.saveDraft();
+  const r=terminerSeance();
+  if(r.erreur){toast(r.erreur);return;}
+  const {ses,n,vol,records}=r,info=infoSeance(ses);
+  Timer.stop();S.derniere=ses.id;
   location.hash='semaine';
-  openModal(`<div class="sheet-head"><div><div class="eyebrow">Bien joué</div><h2 class="title-xl">${PLANS[ses.type].title} terminée</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+  openModal(`<div class="sheet-head"><div><div class="eyebrow">Bien joué</div><h2 class="title-xl">${esc(info.nom)} terminée</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     <div class="tiles"><div class="tile"><div class="l">Durée</div><div class="v num">${ses.dur}<small>min</small></div></div><div class="tile"><div class="l">Séries</div><div class="v num">${n}</div></div>
     <div class="tile"><div class="l">Volume soulevé</div><div class="v num">${fmtInt(vol)}<small>kg</small></div></div><div class="tile"><div class="l">Cardio</div><div class="v num">${tapisMin(ses)?tapisMin(ses)+'<small>min</small>':'–'}</div></div></div>
     ${records.length?`<div class="hint up">Nouveau record : ${records.map(id=>esc(EX[id].name)).join(', ')}</div>`:''}
+    ${ses.type==='L'?`<button class="btn ghost block" data-act="saveasperso" data-id="${ses.id}">${I.plus} Enregistrer comme séance perso</button>`:''}
     <button class="btn primary block" data-act="close">Fermer</button>`);
 }
 function swapEx(oldId,newId){
@@ -212,11 +186,9 @@ function swapEx(oldId,newId){
   /* Exercice d'origine du programme (si on remplace une alternative, on remonte à l'original). */
   const orig=d.from[oldId]||oldId,base=rx(oldId);
   if(hasDone)d.list.splice(i+1,0,newId);else{d.list.splice(i,1,newId);delete d.sets[oldId];delete d.from[oldId];delete d.rx[oldId];}
-  if(newId!==orig){
-    d.from[newId]=orig;
-    /* Même type (charge, poids du corps…) : on garde séries, repos et fourchette de l'original. */
-    if(EX[newId].mode===EX[orig].mode)d.rx[newId]={sets:base.sets,min:base.min,max:base.max,rest:base.rest};
-  }
+  if(newId!==orig)d.from[newId]=orig;
+  /* Même type (charge, poids du corps…) : on garde séries, repos et fourchette de l'original. */
+  if(EX[newId].mode===EX[orig].mode)d.rx[newId]={sets:base.sets,min:base.min,max:base.max,rest:base.rest};
   /* Jamais la charge de l'exercice remplacé : initSets ne lit que l'historique de newId. */
   d.sets[newId]=initSets(newId);
   Store.saveDraft();return true;
@@ -296,7 +268,7 @@ function exInfo(id){
 let picker=null;
 function openPicker(ctx){
   picker=Object.assign({q:'',g:'all'},ctx);
-  const t=ctx.mode==='addalt'?`Alternative à ${EX[ctx.for].name}`:ctx.mode==='swap'?`Remplacer ${EX[ctx.for].name}`:ctx.mode==='prog'?`Ajouter à la séance ${ctx.t}`:'Ajouter un exercice';
+  const t=ctx.mode==='addalt'?`Alternative à ${EX[ctx.for].name}`:ctx.mode==='swap'?`Remplacer ${EX[ctx.for].name}`:ctx.mode==='edit'?'Ajouter à la séance':ctx.mode==='impfix'?`Remplacer « ${S.imp.lignes[ctx.i].nom} »`:'Ajouter un exercice';
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Banque d'exos</div><h2 class="title-l">${esc(t)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     <label class="search">${I.search}<input id="pickq" type="search" placeholder="Chercher un exercice" aria-label="Chercher un exercice" data-autofocus></label>
     <div class="chips"><button class="chip on" data-act="pickg" data-g="all">Tous</button>${Object.keys(GROUPS).map(g=>`<button class="chip" data-act="pickg" data-g="${g}">${GROUPS[g]}</button>`).join('')}</div>
@@ -304,7 +276,7 @@ function openPicker(ctx){
 }
 function pickListHTML(){
   const p=picker;const exclude=new Set(p.for?[p.for].concat(p.mode==='addalt'?alts(p.for):[]):[]);
-  if(p.mode==='prog')planEx(p.t).forEach(x=>exclude.add(x));
+  if(p.mode==='edit'&&S.edit)S.edit.m.ex.forEach(l=>exclude.add(l.id));
   else if(S.draft&&p.mode!=='addalt')S.draft.list.forEach(x=>exclude.add(x));
   let ids=filterIds(p.q,p.g).filter(id=>!exclude.has(id));
   let html='';
@@ -317,10 +289,10 @@ function pickListHTML(){
   html+=ids.map(id=>bankRow(id,'pick')).join('');
   return html||'<div class="empty">Aucun exercice trouvé.</div>';
 }
-function newExSheet(){
+function newExSheet(nom){
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Banque d'exos</div><h2 class="title-l">Créer un exercice</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     <p class="small muted" style="margin:0">Pour une machine de ta salle qui n'est pas dans la liste.</p>
-    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Nom</span><input class="input" id="nxname" placeholder="Ex. : Presse à cuisses Panatta" data-autofocus></label>
+    <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Nom</span><input class="input" id="nxname" placeholder="Ex. : Presse à cuisses Panatta" value="${esc(nom||'')}" data-autofocus></label>
     <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Groupe musculaire</span><select class="sel" id="nxgroup">${Object.keys(GROUPS).map(g=>`<option value="${g}">${GROUPS[g]}</option>`).join('')}</select></label>
     <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Matériel</span><input class="input" id="nxequip" placeholder="Ex. : Machine, Poulie, Haltères"></label>
     <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Ce que tu notes</span><select class="sel" id="nxmode">${Object.keys(MODES).map(m=>`<option value="${m}">${MODES[m]}</option>`).join('')}</select></label>
@@ -338,7 +310,7 @@ function progLabel(id){const m=(EX[id]||{}).mode;return m==='time'?['Minutes par
 function viewHistorique(){
   const ses=sortedSessions();
   const used=[];ses.forEach(s=>{if(s.ex)Object.keys(s.ex).forEach(id=>{if(EX[id]&&!used.includes(id))used.push(id);});});
-  const ids=used.length?used:planEx('A').concat(planEx('B'));
+  const ids=used.length?used:modeleAB('A').ex.concat(modeleAB('B').ex).map(l=>l.id);
   if(!S.histEx||!ids.includes(S.histEx))S.histEx=ids[0];
   const cur=S.histEx,[lab,unit]=progLabel(cur);
   const pts=ses.filter(s=>s.ex&&s.ex[cur]).map(s=>({x:pkey(s.date).getTime(),y:progValue(cur,s.ex[cur])}));
@@ -358,9 +330,9 @@ function viewHistorique(){
       det=`<div class="hist-detail">${s.ex?Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(exLabel(id,s))}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join(''):''}
       ${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} % · ${fmt(s.tapis.v)} km/h</b></div>`:''}
       ${s.note?`<div class="muted">${esc(s.note)}</div>`:''}
-      <div><button class="btn sm danger" data-act="delses" data-id="${s.id}">${I.trash} Supprimer</button></div></div>`;
+      <div class="row" style="flex-wrap:wrap">${s.ex&&s.type!=='five'?`<button class="btn sm ghost" data-act="refaire" data-id="${s.id}">${I.copy} Refaire cette séance</button>`:''}<button class="btn sm danger" data-act="delses" data-id="${s.id}">${I.trash} Supprimer</button></div></div>`;
     }
-    return `<div class="card hist-item"><button class="h" data-act="togglehist" data-id="${s.id}" aria-expanded="${open}"><span class="badge ${s.type}">${typeBadge(s.type)}</span><div style="flex:1;min-width:0"><b>${typeTitle(s.type)}</b><div class="meta">${fmtDate(s.date)} · ${meta}</div></div><span class="muted" aria-hidden="true">${open?'▴':'▾'}</span></button>${det}</div>`;
+    return `<div class="card hist-item"><button class="h" data-act="togglehist" data-id="${s.id}" aria-expanded="${open}">${badgeHTML(infoSeance(s))}<div style="flex:1;min-width:0"><b>${esc(infoSeance(s).nom)}</b><div class="meta">${fmtDate(s.date)} · ${meta}</div></div><span class="muted" aria-hidden="true">${open?'▴':'▾'}</span></button>${det}</div>`;
   }).join(''):`<div class="empty">Tes séances apparaîtront ici dès que tu en auras terminé une.</div>`;
   return `<div class="head-row"><div><div class="eyebrow">Progrès</div><h1 class="title-xl">Historique</h1></div><a class="icon-btn" href="#mois">${I.cal}<span>Mois</span></a></div>
   <section class="card stack"><h2 class="title-m">Progression par exercice</h2>
@@ -421,9 +393,9 @@ function viewReglages(){
   </section>
   <section class="card stack"><h2 class="title-m">Objectif de poids</h2>
     <label class="fld" style="max-width:200px"><input id="goal" inputmode="decimal" value="${esc(fmt(num(S.settings.goal)||72))}" aria-label="Objectif en kg"><span>kg</span></label></section>
-  <section class="card stack"><h2 class="title-m">Mon programme</h2>
-    <p class="small muted" style="margin:0">Choisis les exercices des séances A et B et leur ordre.</p>
-    <a class="btn ghost block" href="#programme">Modifier mes séances A et B</a></section>
+  <section class="card stack"><h2 class="title-m">Mes séances</h2>
+    <p class="small muted" style="margin:0">Modifie A et B, crée tes séances perso, colle une séance reçue.</p>
+    <a class="btn ghost block" href="#seances">Gérer mes séances (${modelesTous().length})</a></section>
   <section class="card stack"><h2 class="title-m">Mes vidéos</h2>
     <p class="small muted" style="margin:0">Par défaut, « Voir la vidéo » ouvre une recherche YouTube en français. Pour garder une vidéo précise, colle son lien ici.</p>
     <select class="sel" id="vidsel" aria-label="Exercice">${Object.keys(EX).sort((a,b)=>EX[a].name.localeCompare(EX[b].name,'fr')).map(id=>`<option value="${id}">${esc(EX[id].name)}${(S.settings.videos||{})[id]?' ✓':''}</option>`).join('')}</select>
@@ -437,27 +409,6 @@ function viewReglages(){
     <button class="btn ghost block" data-act="openimport">Importer une sauvegarde</button>
     <p class="small muted" style="margin:0">La sauvegarde crée un fichier : choisis « Enregistrer dans Fichiers », puis iCloud Drive pour le garder en lieu sûr. Sporty te le rappelle si ta dernière sauvegarde date de plus de ${RAPPEL_JOURS} jours.</p>
   </section>`;
-}
-
-/* ---------- Mon programme ---------- */
-function viewProgramme(){
-  const t=S.progT||'A',list=planEx(t),p=PLANS[t];
-  const modif=!!(S.settings.programme&&S.settings.programme[t]);
-  const rows=list.map((id,i)=>{const e=EX[id];return `<div class="prog-row">
-    <span class="prog-n">${i+1}</span>
-    <button class="prog-nm" data-act="exinfo" data-ex="${id}"><b>${esc(e.name)}</b><br><span class="small muted">${presc(id)} · ${esc(e.equip)}</span></button>
-    <button class="x" data-act="progup" data-i="${i}" ${i===0?'disabled':''} aria-label="Monter ${esc(e.name)}">${I.up}</button>
-    <button class="x" data-act="progdown" data-i="${i}" ${i===list.length-1?'disabled':''} aria-label="Descendre ${esc(e.name)}">${I.down}</button>
-    <button class="x" data-act="progrm" data-i="${i}" aria-label="Retirer ${esc(e.name)} de la séance ${t}">${I.trash}</button></div>`;}).join('');
-  return `<div><a class="link small" href="#reglages">← Réglages</a><div class="eyebrow" style="margin-top:8px">Réglages</div><h1 class="title-xl">Mon programme</h1></div>
-  <div class="seg seg2" role="tablist">${['A','B'].map(k=>`<button role="tab" aria-selected="${t===k}" class="${t===k?'on':''}" data-act="progt" data-v="${k}">Séance ${k}</button>`).join('')}</div>
-  <section class="card stack">
-    <div><h2 class="title-m">${esc(p.title)}</h2><p class="small muted" style="margin:2px 0 0">${esc(p.sub)}</p></div>
-    ${rows?`<div class="prog-list">${rows}</div>`:'<div class="empty">Aucun exercice dans cette séance.</div>'}
-    <button class="btn ghost block" data-act="progadd">${I.plus} Ajouter un exercice</button>
-    <p class="small muted" style="margin:0">Les 20 min de tapis incliné s'ajoutent toujours à la fin.${S.draft?' La séance en cours ne change pas : tes modifications comptent dès la prochaine.':''} Tes séances passées restent intactes dans l'historique.</p>
-  </section>
-  ${modif?`<button class="btn ghost block" data-act="progreset">Revenir à la séance ${t} d'origine</button>`:''}`;
 }
 
 /* ---------- Five ---------- */

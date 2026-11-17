@@ -1,18 +1,19 @@
 'use strict';
 /* ---------- Render ---------- */
 function renderTabs(){
-  const active=S.route==='mois'?'semaine':S.route==='programme'?'reglages':S.route;
+  const active=S.route==='mois'?'semaine':['seances','seance-edit'].includes(S.route)?'reglages':S.route;
   $('#tabs').innerHTML=TABS.map(r=>`<a href="#${r}" class="${active===r?'on':''}" ${active===r?'aria-current="page"':''}>${I['tab_'+r]}<span>${TAB_LABEL[r]}</span></a>`).join('');
 }
 function render(){
   const v=$('#view');
-  const map={semaine:viewSemaine,seance:viewSeance,exos:viewExos,historique:viewHistorique,poids:viewPoids,reglages:viewReglages,mois:viewCalendrier,programme:viewProgramme};
+  const map={semaine:viewSemaine,seance:viewSeance,exos:viewExos,historique:viewHistorique,poids:viewPoids,reglages:viewReglages,mois:viewCalendrier,seances:viewSeances,'seance-edit':viewEditeur};
   v.innerHTML=(map[S.route]||viewSemaine)();
   renderTabs();applyTheme();
 }
 function handleHash(){
   const h=decodeURIComponent(location.hash.slice(1)).replace(/[\s  ]/g,'');
   if(h==='calendrier'){location.replace('#mois');return;}
+  if(h==='programme'){location.replace('#seances');return;}
   const prev=S.route;
   S.route=ROUTES.includes(h)?h:'semaine';
   render();
@@ -41,7 +42,7 @@ document.addEventListener('click',e=>{
     case 'cycletheme':{const order=['auto','light','dark'];S.settings.theme=order[(order.indexOf(S.settings.theme||'auto')+1)%3];Store.saveSettings();applyTheme();if(S.route==='reglages')render();toast('Thème : '+({auto:'automatique selon l\'heure',light:'clair',dark:'sombre'})[S.settings.theme]);break;}
     case 'theme':S.settings.theme=el.dataset.v;Store.saveSettings();render();break;
     case 'plan':S.settings.plan=el.dataset.v;Store.saveSettings();render();break;
-    case 'start':unlockAudio();closeModal();startSession(el.dataset.type);break;
+    case 'start':unlockAudio();closeModal();startSession(el.dataset.type,el.dataset.plan?{planId:el.dataset.plan}:{});break;
     case 'toggleset':{
       unlockAudio();
       const i=+el.dataset.i,set=S.draft.sets[id][i],ex=rx(id);
@@ -106,10 +107,13 @@ document.addEventListener('click',e=>{
     case 'savenewex':{
       const name=$('#nxname').value.trim();if(!name){toast('Donne un nom à l\'exercice.');$('#nxname').focus();return;}
       const c={id:'c_'+uid(),name,group:$('#nxgroup').value,equip:$('#nxequip').value.trim()||'Perso',mode:$('#nxmode').value};
-      S.settings.custom=(S.settings.custom||[]).concat([c]);Store.saveSettings();buildEx();closeModal();render();toast('Exercice créé');exInfo(c.id);break;}
+      S.settings.custom=(S.settings.custom||[]).concat([c]);Store.saveSettings();buildEx();
+      if(S.impCreer!=null&&S.imp){const l=S.imp.lignes[S.impCreer];S.impCreer=null;Object.assign(l,{ok:true,id:c.id,ligne:ligneDepuisCode(c.id,l.raw)});toast('Exercice perso créé');apercuCollage();break;}
+      closeModal();render();toast('Exercice créé');exInfo(c.id);break;}
     case 'delcustom':confirmBox('Supprimer cet exercice ?','Il disparaîtra de ta banque et de ton programme. Tes séances passées restent dans l\'historique.','Supprimer',()=>{
       const st=S.settings;st.custom=(st.custom||[]).filter(c=>c.id!==id);
-      if(st.programme)for(const k in st.programme)st.programme[k]=st.programme[k].filter(x=>x!==id);
+      if(st.programme)for(const k in st.programme){const p=st.programme[k];if(Array.isArray(p))st.programme[k]=p.filter(x=>x!==id);else if(p&&p.ex)p.ex=p.ex.filter(l=>l.id!==id);}
+      if((S.modeles||[]).some(m=>m.ex.some(l=>l.id===id))){S.modeles=S.modeles.map(m=>Object.assign({},m,{ex:m.ex.filter(l=>l.id!==id)}));Store.saveModeles();}
       if(st.alts){delete st.alts[id];for(const k in st.alts)st.alts[k]=st.alts[k].filter(x=>x!==id);}
       st.hidden=(st.hidden||[]).filter(x=>x!==id);
       Store.saveSettings();buildEx();render();toast('Exercice supprimé');},true);break;
@@ -117,12 +121,41 @@ document.addEventListener('click',e=>{
     case 'hide':setHidden(id,true);closeModal();render();toast(`${EX[id].name} masqué`);break;
     case 'unhide':setHidden(id,false);closeModal();render();toast(`${EX[id].name} réaffiché`);break;
     case 'togglehidden':S.showHidden=!S.showHidden;render();break;
-    /* mon programme */
-    case 'progt':S.progT=el.dataset.v;render();break;
-    case 'progup':case 'progdown':{const t=S.progT||'A',l=planEx(t).slice(),i=+el.dataset.i,j=a==='progup'?i-1:i+1;if(j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];setPlanEx(t,l);render();break;}
-    case 'progrm':{const t=S.progT||'A',l=planEx(t).slice(),i=+el.dataset.i,nm=EX[l[i]].name;l.splice(i,1);setPlanEx(t,l);render();toast(`${nm} retiré de la séance ${t}`);break;}
-    case 'progadd':openPicker({mode:'prog',t:S.progT||'A'});break;
-    case 'progreset':{const t=S.progT||'A';confirmBox(`Revenir à la séance ${t} d'origine ?`,'Ta liste d\'exercices modifiée sera remplacée par celle du départ.','Revenir à l\'origine',()=>{const p=Object.assign({},S.settings.programme);delete p[t];S.settings.programme=p;Store.saveSettings();render();},true);break;}
+    /* mes séances */
+    case 'newseance':ouvrirEditeur(nouveauModele());break;
+    case 'editseance':ouvrirEditeur(modeleParId(el.dataset.m));break;
+    case 'dupseance':{const m=dupliquerModele(el.dataset.m);if(m){ouvrirEditeur(m);toast('Copie prête : change le nom puis enregistre.');}break;}
+    case 'copycode':copyText(codeSeance(el.dataset.m),'Code de la séance copié');break;
+    case 'delseance':{const m=modeleParId(el.dataset.m);if(!m)break;
+      confirmBox(`Supprimer « ${m.nom} » ?`,'La séance disparaît de tes séances et des jours où elle était prévue. Ton historique ne change pas.','Supprimer',()=>{const r=supprimerModele(m.id);if(r.erreur){toast(r.erreur);return;}S.edit=null;toast('Séance supprimée');if(location.hash==='#seances')render();else location.hash='seances';},true);break;}
+    case 'edcouleur':S.edit.m.couleur=el.dataset.c;render();break;
+    case 'edup':case 'eddown':{const l=S.edit.m.ex,i=+el.dataset.i,j=a==='edup'?i-1:i+1;if(j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];render();break;}
+    case 'edrm':{const l=S.edit.m.ex,i=+el.dataset.i;const nm=EX[l[i].id].name;l.splice(i,1);render();toast(`${nm} retiré`);break;}
+    case 'edadd':openPicker({mode:'edit'});break;
+    case 'edjour':{const d=+el.dataset.d,j=new Set(S.edit.m.jours||[]);j.has(d)?j.delete(d):j.add(d);S.edit.m.jours=[...j].sort();render();break;}
+    case 'edsave':{const r=enregistrerModele(S.edit.m);
+      if(r.erreur){const e=$('#ed-err');if(e){e.textContent=r.erreur;e.hidden=false;e.scrollIntoView({block:'center'});}toast(r.erreur);return;}
+      const ret=S.edit.retour;S.edit=null;toast('Séance enregistrée');location.hash=ret==='seance-edit'?'seances':ret;break;}
+    case 'edcancel':{const ret=S.edit?S.edit.retour:'seances';S.edit=null;location.hash=ret==='seance-edit'?'seances':ret;break;}
+    case 'edreset':{const t=S.edit.m.id;confirmBox(`Revenir à la ${S.edit.m.nom} d'origine ?`,'Tes changements d\'exercices seront remplacés par ceux du départ.','Revenir à l\'origine',()=>{reinitialiserAB(t);S.edit=null;location.hash='seances';toast('Séance d\'origine rétablie');},true);break;}
+    case 'saveasperso':{const ses=S.sessions.find(x=>x.id===el.dataset.id);if(!ses)break;closeModal();ouvrirEditeur(modeleDepuisSeance(ses,''),'seances');toast('Donne un nom à ta séance.');break;}
+    case 'refaire':{const ses=S.sessions.find(x=>x.id===el.dataset.id);if(!ses)break;ouvrirEditeur(modeleDepuisSeance(ses,`${infoSeance(ses).nom} (copie)`),'historique');break;}
+    /* coller une séance */
+    case 'coller':ouvrirCollerSeance();break;
+    case 'impread':{const t=$('#imptxt').value;if(!t.trim()){toast('Colle d\'abord le code.');return;}lireCollage(t);break;}
+    case 'impchoix':S.imp.choix=el.dataset.v;apercuCollage();break;
+    case 'impignorer':S.imp.lignes[+el.dataset.i].ignore=true;apercuCollage();break;
+    case 'impbanque':openPicker({mode:'impfix',i:+el.dataset.i});break;
+    case 'impcreer':S.impCreer=+el.dataset.i;newExSheet(S.imp.lignes[+el.dataset.i].nom);break;
+    case 'impsave':{const mid=validerCollage();if(!mid)break;closeModal();toast('Séance enregistrée dans Mes séances');if(location.hash==='#seances')render();else location.hash='seances';break;}
+    case 'impplace':{const date=$('#impdate').value;if(!date){toast('Choisis une date.');return;}const mid=validerCollage();if(!mid)break;const r=prevoir(mid,date);closeModal();render();toast(r.erreur||`Séance prévue le ${fmtDate(date)}`);break;}
+    case 'impstart':{const mid=validerCollage();if(!mid)break;closeModal();unlockAudio();startSession(mid);break;}
+    /* séances prévues */
+    case 'prevoir':prevoirSheet(el.dataset.date);break;
+    case 'prevoirpick':{const r=prevoir(el.dataset.m,el.dataset.date);if(r.erreur){toast(r.erreur);return;}render();daySheet(el.dataset.date);toast(`${infoModele(el.dataset.m).nom} prévue le ${fmtDate(el.dataset.date)}`);break;}
+    case 'pmove':{const z=$('#pm-'+el.dataset.plan);if(z)z.hidden=!z.hidden;break;}
+    case 'pmoveok':{const date=$('#pmd-'+el.dataset.plan).value;const r=deplacerPrevue(el.dataset.plan,date);if(r.erreur){toast(r.erreur);return;}render();daySheet(date);toast(`Déplacée au ${fmtDate(date)}`);break;}
+    case 'pdel':{const p=(S.plans||[]).find(x=>x.id===el.dataset.plan);retirerPrevue(el.dataset.plan);render();if(p)daySheet(p.date);toast('Retirée de ce jour');break;}
     case 'addtosession':addToSession(id);closeModal();toast(`${EX[id].name} ajouté à la séance`);location.hash='seance';setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},120);break;
     case 'pickalt':openPicker({mode:'addalt',for:id});break;
     case 'pickswap':openPicker({mode:'swap',for:id});break;
@@ -132,7 +165,8 @@ document.addEventListener('click',e=>{
       const p=picker;
       if(p.mode==='addalt'){addAlt(p.for,id);toast('Alternative ajoutée');exInfo(p.for);}
       else if(p.mode==='swap'){if(swapEx(p.for,id)!==false){addAlt(p.for,id);closeModal();render();toast(`${EX[id].name} à la place de ${EX[p.for].name}`);}}
-      else if(p.mode==='prog'){setPlanEx(p.t,planEx(p.t).concat(id));closeModal();render();toast(`${EX[id].name} ajouté à la séance ${p.t}`);}
+      else if(p.mode==='edit'){S.edit.m.ex.push(ligneDefaut(id));closeModal();render();toast(`${EX[id].name} ajouté`);}
+      else if(p.mode==='impfix'){const l=S.imp.lignes[p.i];Object.assign(l,{ok:true,id,ligne:ligneDepuisCode(id,l.raw)});apercuCollage();}
       else{addToSession(id);closeModal();render();setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}
       break;}
     case 'swapto':{const from=el.dataset.from;if(swapEx(from,id)!==false){closeModal();if(S.route!=='seance')location.hash='seance';else render();toast(`${EX[id].name} à la place de ${EX[from].name}`);setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}break;}
@@ -155,6 +189,10 @@ document.addEventListener('input',e=>{
   if(el.dataset.f&&S.draft){const s=S.draft.sets[el.dataset.ex][+el.dataset.i];s[el.dataset.f]=el.value;saveDraftSoon();}
   else if(el.id==='bankq'){S.bankQ=el.value;$('#bankList').innerHTML=bankListHTML();}
   else if(el.id==='pickq'&&picker){picker.q=el.value;$('#pickList').innerHTML=pickListHTML();}
+  else if(S.edit&&el.dataset.edf){S.edit.m.ex[+el.dataset.edi][el.dataset.edf]=el.value;}
+  else if(S.edit&&el.id==='ed-nom')S.edit.m.nom=el.value;
+  else if(S.edit&&el.id==='ed-badge')S.edit.m.badge=el.value.toUpperCase();
+  else if(S.edit&&el.id==='ed-desc')S.edit.m.desc=el.value;
 });
 document.addEventListener('change',e=>{
   const el=e.target;
@@ -163,6 +201,8 @@ document.addEventListener('change',e=>{
     if(f.size>20e6){erreurImport('Ce fichier est trop gros pour être une sauvegarde Sporty.');return;}
     f.text().then(lireTexteImport,()=>erreurImport('Impossible de lire ce fichier.'));el.value='';return;
   }
+  if(S.edit&&el.id==='ed-tapis'){S.edit.m.tapis=el.checked;render();return;}
+  if(S.edit&&el.dataset.edf){S.edit.m.ex[+el.dataset.edi][el.dataset.edf]=el.value;return;}
   if(el.id==='goal'){const g=num(el.value);if(!isNaN(g)&&g>30&&g<300){S.settings.goal=g;Store.saveSettings();toast('Objectif enregistré');}else toast('Indique un objectif en kg, par exemple 72.');}
   else if(el.id==='vidsel'){$('#vidurl').value=(S.settings.videos||{})[el.value]||'';}
 });
