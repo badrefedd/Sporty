@@ -121,20 +121,20 @@ function viewCalendrier(){
 }
 /* ---------- Views: session ---------- */
 function exCard(id){
-  const e=rx(id),d=S.draft,sets=d.sets[id]||[],sg=suggest(id),F=fieldsFor(id);
+  const e=rx(id),d=cur(),sets=d.sets[id]||[],sg=suggest(id),F=fieldsFor(id);
   const allDone=sets.length&&sets.every(x=>x.done);
   const L=altLists(id),nAlt=L.off.length+L.perso.length+L.dep.length,orig=remplaceDe(id);
   const rows=sets.map((x,i)=>`<div class="set ${x.done?'done':''}">
     <span class="set-n">${i+1}</span>
-    ${F.map(f=>`<label class="fld"><input id="${f.k}-${id}-${i}" data-ex="${id}" data-i="${i}" data-f="${f.k}" inputmode="${f.im}" autocomplete="off" placeholder="0" value="${esc(x[f.k])}" aria-label="${esc(f.label)} série ${i+1}"><span>${esc(f.label)}</span></label>`).join('')}
+    ${F.map(f=>`<label class="fld"><input id="${f.k}-${id}-${i}" data-ex="${id}" data-i="${i}" data-f="${f.k}" inputmode="${f.im}" autocomplete="off" placeholder="–" value="${esc(x[f.k])}" aria-label="${esc(f.label)} série ${i+1}"><span>${esc(f.label)}</span></label>`).join('')}
     <button class="check" data-act="toggleset" data-ex="${id}" data-i="${i}" aria-label="${x.done?'Annuler':'Valider'} la série ${i+1}" aria-pressed="${x.done}">${I.check}</button></div>`).join('');
   return `<section class="card ex ${allDone?'complete':''}" id="ex-${id}">
     <div class="ex-top">
       <button class="ex-thumb" data-act="exinfo" data-ex="${id}" aria-label="Voir comment faire : ${esc(e.name)}">${illuHTML(id,'vignette')}<span class="play">${I.play}</span></button>
       <div style="min-width:0"><h3>${esc(e.name)}</h3>${orig&&EX[orig]?`<p class="small muted" style="margin:2px 0 0">À la place de ${esc(EX[orig].name)}</p>`:''}<p class="presc">${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}${e.perHand?' · kg par haltère':''}${e.note?' · '+esc(e.note):''}</p>
-      ${sg.last?`<p class="last" style="margin-top:4px">Dernière fois : <b>${setsStr(id,sg.last.ex[id])}</b></p>`:''}</div>
+      ${sg.last&&S.route!=='modif'?`<p class="last" style="margin-top:4px">Dernière fois : <b>${setsStr(id,sg.last.ex[id])}</b></p>`:''}</div>
     </div>
-    <p class="hint ${sg.up?'up':''}">${esc(sg.txt)}</p>
+    ${S.route==='modif'?'':`<p class="hint ${sg.up?'up':''}">${esc(sg.txt)}</p>`}
     <div class="sets">${rows}</div>
     <div class="ex-actions"><button class="btn sm ghost" data-act="addset" data-ex="${id}">${I.plus} Série</button><button class="btn sm ghost" data-act="rmset" data-ex="${id}" ${sets.length>1?'':'disabled'}>− Série</button><button class="btn sm ghost" data-act="altsheet" data-ex="${id}">${I.swap} Alternative${nAlt?` (${nAlt})`:''}</button><button class="btn sm ghost rm" data-act="rmex" data-ex="${id}" aria-label="Retirer ${esc(e.name)} de la séance">${I.trash} Retirer</button></div>
   </section>`;
@@ -152,9 +152,9 @@ function viewSeance(){
   const d=S.draft,info=d.info||infoModele(d.type),p=modeleParId(d.type);
   const total=d.list.reduce((a,id)=>a+(d.sets[id]||[]).length,0),done=d.list.reduce((a,id)=>a+(d.sets[id]||[]).filter(x=>x.done).length,0);
   const st=new Date(d.start);
-  return `<div class="session-head"><div><div class="eyebrow">${p&&p.desc?esc(p.desc)+' · ':''}depuis ${st.getHours()} h ${pad(st.getMinutes())}</div><h1 class="title-xl">${badgeHTML(info)} ${esc(info.nom)}</h1></div><div class="small muted num" style="text-align:right">${done}/${total}<br>séries</div></div>
+  return `<div class="session-head"><div><div class="eyebrow">${p&&p.desc?esc(p.desc)+' · ':''}depuis ${st.getHours()} h ${pad(st.getMinutes())}</div><h1 class="title-xl">${badgeHTML(info)} ${esc(info.nom)}</h1></div><div class="small muted num" style="text-align:right">${done}/${total}<br>${total>1?'séries':'série'}</div></div>
   <div class="progress" aria-hidden="true"><i style="width:${total?done/total*100:0}%"></i></div>
-  <div class="row"><button class="btn sm ghost" style="flex:1" data-act="stop">${I.stop} Arrêter et enregistrer</button><button class="btn sm danger" style="flex:1" data-act="abandon">${I.x} Annuler la séance</button></div>
+  <div class="row"><button class="btn sm danger" data-act="abandon">${I.x} Annuler la séance</button></div>
   ${d.list.length?d.list.map(exCard).join(''):'<div class="empty">Ajoute ton premier exercice avec le bouton ci-dessous.</div>'}
   <button class="btn ghost block" data-act="addex">${I.plus} Ajouter un exercice</button>
   <button class="btn primary block" data-act="finish">Terminer la séance</button>`;
@@ -162,47 +162,91 @@ function viewSeance(){
 function startSession(type,opts={}){
   if(S.draft){location.hash='seance';toast('Une séance est déjà en cours.');return;}
   if(type!=='L'&&!modeleParId(type)){toast('Séance introuvable.');return;}
-  demarrerSeance(type,opts);
+  demarrerSeance(type,opts);Ecran.garder();
   if(location.hash==='#seance')render();else location.hash='seance';
   window.scrollTo(0,0);
   if(type==='L')setTimeout(()=>openPicker({mode:'add'}),150);
 }
-function finishSession(){
-  const r=terminerSeance();
-  if(r.erreur){toast(r.erreur);return;}
+/* Fin de séance : 1) séries pas validées ? 2) plus de 3 heures ? 3) enregistrement et récapitulatif. */
+function finishSession(etape){
+  const d=S.draft;if(!d)return;
+  const e=etatFin(d);
+  if(etape!=='duree'&&etape!=='series'&&(e.remplies||e.vides)){
+    const parts=[];
+    if(e.remplies)parts.push(`${nb(e.remplies,'série remplie','séries remplies')} mais pas ${e.remplies>1?'validées':'validée'}`);
+    if(e.vides)parts.push(nb(e.vides,'série vide','séries vides'));
+    openModal(`<div class="sheet-head"><div><div class="eyebrow">Fin de séance</div><h2 class="title-l">Terminer la séance ?</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+      <p class="muted" style="margin:0">Il reste ${parts.join(' et ')}.${e.valides?` ${nb(e.valides,'série est validée','séries sont validées')}.`:''}</p>
+      ${e.remplies?`<button class="btn primary block" data-act="finvalider">Valider ${e.remplies>1?`ces ${e.remplies} séries`:'cette série'} et terminer</button>`:''}
+      <button class="btn ${e.remplies?'ghost':'primary'} block" data-act="finsans">Terminer sans ${e.remplies+e.vides>1?'elles':'elle'}</button>
+      <button class="btn ghost block" data-act="close">Continuer la séance</button>
+      ${e.remplies&&e.vides?`<p class="small muted" style="margin:0">« Valider et terminer » garde les séries remplies et laisse de côté les vides. « Terminer sans elles » ne garde que les séries déjà validées.</p>`:''}`);
+    return;
+  }
+  if(etape!=='duree'&&seanceTropLongue()){
+    const st=new Date(d.start);
+    openModal(`<div class="sheet-head"><div><div class="eyebrow">Fin de séance</div><h2 class="title-l">À quelle heure as-tu fini ?</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
+      <p class="muted" style="margin:0">Ta séance a commencé le ${fmtDate(dkey(st))} à ${st.getHours()} h ${pad(st.getMinutes())}, il y a plus de 3 heures. Indique l'heure de fin réelle pour garder une durée juste.</p>
+      <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Heure de fin</span><input class="input" type="time" id="finheure" value="${hhmm(finEstimee())}"></label>
+      <p class="hint" id="finerr" style="color:var(--danger)" hidden></p>
+      <button class="btn primary block" data-act="finheure">Terminer la séance</button>
+      <button class="btn ghost block" data-act="close">Continuer la séance</button>`);
+    return;
+  }
+  terminerEtAfficher(etape==='duree'?S.finChoisie:undefined);
+}
+/* Heure de fin choisie (HH:MM, le jour du début ; le lendemain si elle est avant le début). */
+function finDepuisHeure(v){
+  const d=S.draft,m=String(v||'').match(/^(\d{1,2}):(\d{2})$/);if(!m)return null;
+  const base=new Date(d.start);base.setHours(+m[1],+m[2],0,0);let f=base.getTime();
+  if(f<=d.start)f+=864e5;
+  return f>Date.now()?null:f;
+}
+function terminerEtAfficher(fin){
+  const r=terminerSeance(fin);
+  if(r.erreur){toast(r.erreur);closeModal();return;}
   const {ses,n,vol,records}=r,info=infoSeance(ses);
-  Timer.stop();S.derniere=ses.id;
+  Timer.stop();Ecran.liberer();S.derniere=ses.id;S.finChoisie=null;
   location.hash='semaine';
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Bien joué</div><h2 class="title-xl">${esc(info.nom)} terminée</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
-    <div class="tiles"><div class="tile"><div class="l">Durée</div><div class="v num">${ses.dur}<small>min</small></div></div><div class="tile"><div class="l">Séries</div><div class="v num">${n}</div></div>
+    <div class="tiles"><div class="tile"><div class="l">Durée</div><div class="v num">${ses.dur}<small>min</small></div></div><div class="tile"><div class="l">${n>1?'Séries':'Série'}</div><div class="v num">${n}</div></div>
     <div class="tile"><div class="l">Volume soulevé</div><div class="v num">${fmtInt(vol)}<small>kg</small></div></div><div class="tile"><div class="l">Cardio</div><div class="v num">${tapisMin(ses)?tapisMin(ses)+'<small>min</small>':'–'}</div></div></div>
     ${records.length?`<div class="hint up">Nouveau record : ${records.map(id=>esc(EX[id].name)).join(', ')}</div>`:''}
     ${ses.type==='L'?`<button class="btn ghost block" data-act="saveasperso" data-id="${ses.id}">${I.plus} Enregistrer comme séance perso</button>`:''}
+    <div class="row"><button class="btn ghost" style="flex:1" data-act="modifier" data-id="${ses.id}">${I.edit} Modifier</button><button class="btn ghost" style="flex:1" data-act="rouvrir" data-id="${ses.id}">${I.undo} Rouvrir la séance</button></div>
+    <p class="small muted" style="margin:0">« Rouvrir » remet la séance en cours pendant 3 heures, pour ajouter ce qui manque.</p>
     <button class="btn primary block" data-act="close">Fermer</button>`);
 }
-function swapEx(oldId,newId){
-  const d=S.draft;if(!d)return;
-  if(d.list.includes(newId)){toast('Cet exercice est déjà dans la séance.');return false;}
-  d.from=d.from||{};d.rx=d.rx||{};
-  const i=d.list.indexOf(oldId);
-  const hasDone=(d.sets[oldId]||[]).some(x=>x.done);
-  /* Exercice d'origine du programme (si on remplace une alternative, on remonte à l'original). */
-  const orig=d.from[oldId]||oldId,base=rx(oldId);
-  if(hasDone)d.list.splice(i+1,0,newId);else{d.list.splice(i,1,newId);delete d.sets[oldId];delete d.from[oldId];delete d.rx[oldId];}
-  if(newId!==orig)d.from[newId]=orig;
-  /* Même type (charge, poids du corps…) : on garde séries, repos et fourchette de l'original. */
-  if(EX[newId].mode===EX[orig].mode)d.rx[newId]={sets:base.sets,min:base.min,max:base.max,rest:base.rest};
-  /* Jamais la charge de l'exercice remplacé : initSets ne lit que l'historique de newId. */
-  d.sets[newId]=initSets(newId);
-  Store.saveDraft();return true;
+
+/* ---------- Modifier une séance terminée ---------- */
+function viewModif(){
+  const m=S.modif;if(!m){setTimeout(()=>{location.hash='historique';});return '';}
+  const ses=S.sessions.find(s=>s.id===m.sesId)||{},info=infoSeance(ses),c=m.champs;
+  const tete=`<div><button class="link small" data-act="modifannuler">← Annuler</button><div class="eyebrow" style="margin-top:8px">Modifier la séance</div><h1 class="title-xl">${badgeHTML(info)} ${esc(info.nom)}</h1></div>`;
+  const boutons=`<p class="hint" id="moderr" style="color:var(--danger)" hidden></p>
+    <button class="btn primary block" data-act="modifsave">Enregistrer les modifications</button>
+    <button class="btn ghost block" data-act="modifannuler">Annuler</button>`;
+  if(m.five)return `${tete}
+    <section class="card stack">
+      <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Date</span><input class="input" type="date" id="m-date" value="${esc(c.date)}" max="${dkey()}"></label>
+      <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Durée</span><span class="fld"><input id="m-min" inputmode="numeric" value="${esc(c.min)}" aria-label="Durée en minutes"><span>min</span></span></label>
+      <label class="stack" style="gap:6px"><span class="small" style="font-weight:700">Note</span><input class="input" id="m-note" value="${esc(c.note)}" placeholder="Ex. : bonne forme, 3 buts"></label>
+    </section>${boutons}`;
+  const d=m.d;
+  return `${tete}
+  <section class="card stack">
+    <div class="modif-champs">
+      <label><span>Date</span><input class="input" type="date" id="m-date" value="${esc(c.date)}" max="${dkey()}"></label>
+      <label><span>Début</span><input class="input" type="time" id="m-heure" value="${esc(c.heure)}"></label>
+      <label><span>Durée (min)</span><input class="input" id="m-dur" inputmode="numeric" value="${esc(c.dur)}"></label>
+    </div>
+    <p class="small muted" style="margin:0">Seules les séries cochées ✓ sont enregistrées.</p>
+  </section>
+  ${d.list.length?d.list.map(exCard).join(''):'<div class="empty">Ajoute au moins un exercice.</div>'}
+  <button class="btn ghost block" data-act="addex">${I.plus} Ajouter un exercice</button>
+  ${boutons}`;
 }
-function addToSession(id){
-  const d=S.draft;if(!d)return;
-  if(d.list.includes(id)){toast('Déjà dans la séance.');return;}
-  const ti=d.list.indexOf('tapis');
-  if(ti!==-1&&id!=='tapis'&&ti===d.list.length-1)d.list.splice(ti,0,id);else d.list.push(id);
-  d.sets[id]=initSets(id);Store.saveDraft();
-}
+
 /* Une ligne d'alternative avec ses étiquettes. */
 function altRow(from,x,opts){
   const e=EX[x.id],tags=altTags(from,x.id,opts);
@@ -210,7 +254,7 @@ function altRow(from,x,opts){
   return `<button class="bank-row alt" data-act="${act}" data-ex="${x.id}" data-from="${from}"><span class="ic">${illuHTML(x.id,'liste')}</span><span style="min-width:0;flex:1"><span class="nm">${esc(e.name)}</span><br><span class="sb">${esc(e.equip)}${x.note?' · '+esc(x.note):''}</span>${tags.length?`<span class="tags">${tags.map(t=>`<i class="t-${norm(t).replace(/\W+/g,'-')}">${esc(t)}</i>`).join('')}</span>`:''}</span></button>`;
 }
 function altSheet(id){
-  const e=EX[id],L=altLists(id,S.draft?S.draft.list:[]);
+  const e=EX[id],d=cur(),L=altLists(id,d?d.list:[]);
   const sec=(t,arr,o)=>arr.length?`<div class="stack" style="gap:0"><div class="pick-sec">${t}</div>${arr.map(x=>altRow(id,x,o)).join('')}</div>`:'';
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Alternative</div><h2 class="title-l">Remplacer ${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     ${sec('Même mouvement, autre matériel',L.off,{})}
@@ -240,7 +284,7 @@ function viewExos(){
   const vis=Object.keys(EX).filter(id=>S.showHidden||!isHidden(id)),total=vis.length;
   const nHid=Object.keys(EX).filter(isHidden).length;
   const counts={};vis.forEach(id=>counts[EX[id].group]=(counts[EX[id].group]||0)+1);
-  return `<div class="head-row"><div><div class="eyebrow">${total} exercices</div><h1 class="title-xl">Banque d'exos</h1></div><button class="icon-btn" data-act="newex">${I.plus}<span>Créer</span></button></div>
+  return `<div class="head-row"><div><div class="eyebrow">${nb(total,'exercice','exercices')}</div><h1 class="title-xl">Banque d'exos</h1></div><button class="icon-btn" data-act="newex">${I.plus}<span>Créer</span></button></div>
   ${S.draft?`<p class="small muted" style="margin:0">Touche un exercice pour l'ajouter à ta séance en cours.</p>`:''}
   <label class="search">${I.search}<input id="bankq" type="search" placeholder="Chercher : poulie, fessiers, presse…" value="${esc(S.bankQ)}" aria-label="Chercher un exercice"></label>
   <div class="chips" role="tablist"><button class="chip ${S.bankG==='all'?'on':''}" data-act="bankg" data-g="all">Tous</button>${Object.keys(GROUPS).map(g=>`<button class="chip ${S.bankG===g?'on':''}" data-act="bankg" data-g="${g}">${GROUPS[g]} · ${counts[g]||0}</button>`).join('')}</div>
@@ -248,7 +292,7 @@ function viewExos(){
   <div id="bankList" class="stack">${bankListHTML()}</div>`;
 }
 function exInfo(id){
-  const e=EX[id],inDraft=S.draft&&S.draft.list.includes(id),L=altLists(id,inDraft?S.draft.list:[]);
+  const D=cur(),e=EX[id],inDraft=!!D&&D.list.includes(id),L=altLists(id,inDraft?D.list:[]);
   openModal(`<div class="sheet-head"><div><div class="eyebrow">${esc(GROUPS[e.group]||'')} · ${presc(id)}${e.rest?' · repos '+restLabel(e.rest):''}</div><h2 class="title-l">${esc(e.name)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
   <div class="figbox${['photo','perso'].includes(typeVisuel(id))?' photo':''}">${illuHTML(id,'grand')}</div>
   ${illuNote(id)}
@@ -260,7 +304,7 @@ function exInfo(id){
   <div class="pills"><span class="pill">${esc(e.equip)}</span>${e.muscles.map(m=>`<span class="pill">${esc(m)}</span>`).join('')}${e.perHand?'<span class="pill">Charge par haltère</span>':''}</div>
   ${e.cues.length?`<ul class="cues">${e.cues.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>`:'<p class="small muted" style="margin:0">Exercice perso : ajoute ta vidéo dans Réglages si tu veux.</p>'}
   <a class="btn primary block" href="${esc(videoUrl(id))}" target="_blank" rel="noopener noreferrer">${I.ext} Voir la vidéo</a>
-  ${S.draft&&!inDraft?`<button class="btn blue block" data-act="addtosession" data-ex="${id}">${I.plus} Ajouter à la séance en cours</button>`:''}
+  ${D&&!inDraft?`<button class="btn blue block" data-act="addtosession" data-ex="${id}">${I.plus} Ajouter à la séance${S.route==='modif'?'':' en cours'}</button>`:''}
   <div class="stack" style="gap:0"><h3 class="title-m" style="margin-bottom:4px">Alternatives</h3>
     ${MOUV[id]?`<p class="small muted" style="margin:0 0 4px">Mouvement : ${esc(SCHEMAS[MOUV[id][0]])}</p>`:''}
     ${L.off.map(x=>altRow(id,x,{act:inDraft?'swapto':'exinfo'})).join('')}
@@ -286,7 +330,7 @@ function openPicker(ctx){
 function pickListHTML(){
   const p=picker;const exclude=new Set(p.for?[p.for].concat(p.mode==='addalt'?alts(p.for):[]):[]);
   if(p.mode==='edit'&&S.edit)S.edit.m.ex.forEach(l=>exclude.add(l.id));
-  else if(S.draft&&p.mode!=='addalt')S.draft.list.forEach(x=>exclude.add(x));
+  else if(cur()&&p.mode!=='addalt')cur().list.forEach(x=>exclude.add(x));
   let ids=filterIds(p.q,p.g).filter(id=>!exclude.has(id));
   let html='';
   if(p.for&&!p.q&&p.g==='all'){
@@ -333,13 +377,14 @@ function viewHistorique(){
     const open=S.openHist===s.id;
     const nsets=s.ex?Object.values(s.ex).reduce((a,x)=>a+x.length,0):0;
     const tm=tapisMin(s);
-    const meta=s.type==='five'?`${s.min||60} min de foot`:`${nsets} séries · ${s.dur||'?'} min${tm?` · cardio ${tm} min`:''}`;
+    const meta=(s.type==='five'?`${s.min||60} min de foot`:`${nb(nsets,'série','séries')} · ${s.dur||'?'} min${tm?` · cardio ${tm} min`:''}`)+(s.modifiee?' · modifiée':'');
     let det='';
     if(open){
       det=`<div class="hist-detail">${s.ex?Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(exLabel(id,s))}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join(''):''}
       ${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} % · ${fmt(s.tapis.v)} km/h</b></div>`:''}
       ${s.note?`<div class="muted">${esc(s.note)}</div>`:''}
-      <div class="row" style="flex-wrap:wrap">${s.ex&&s.type!=='five'?`<button class="btn sm ghost" data-act="refaire" data-id="${s.id}">${I.copy} Refaire cette séance</button>`:''}<button class="btn sm danger" data-act="delses" data-id="${s.id}">${I.trash} Supprimer</button></div></div>`;
+      ${s.modifiee?'<div><span class="pill">modifiée</span></div>':''}
+      <div class="row" style="flex-wrap:wrap"><button class="btn sm ghost" data-act="modifier" data-id="${s.id}">${I.edit} Modifier</button>${peutRouvrir(s)?`<button class="btn sm ghost" data-act="rouvrir" data-id="${s.id}">${I.undo} Rouvrir la séance</button>`:''}${s.ex&&s.type!=='five'?`<button class="btn sm ghost" data-act="refaire" data-id="${s.id}">${I.copy} Refaire cette séance</button>`:''}<button class="btn sm danger" data-act="delses" data-id="${s.id}">${I.trash} Supprimer</button></div></div>`;
     }
     return `<div class="card hist-item"><button class="h" data-act="togglehist" data-id="${s.id}" aria-expanded="${open}">${badgeHTML(infoSeance(s))}<div style="flex:1;min-width:0"><b>${esc(infoSeance(s).nom)}</b><div class="meta">${fmtDate(s.date)} · ${meta}</div></div><span class="muted" aria-hidden="true">${open?'▴':'▾'}</span></button>${det}</div>`;
   }).join(''):`<div class="empty">Tes séances apparaîtront ici dès que tu en auras terminé une.</div>`;
@@ -397,6 +442,8 @@ function viewReglages(){
   <section class="card stack"><h2 class="title-m">Thème</h2>
     <div class="seg" role="radiogroup" aria-label="Thème">${[['light','Clair'],['dark','Sombre'],['auto','Auto']].map(([k,l])=>`<button role="radio" aria-checked="${t===k}" class="${t===k?'on':''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <p class="small muted" style="margin:0">Auto : clair de 7 h à 19 h, sombre le soir, pour tes séances de 19 h à 20 h.</p></section>
+  ${Ecran.dispo?`<section class="card stack"><h2 class="title-m">Pendant la séance</h2>
+    <button class="opt ${S.settings.ecranAllume!==false?'on':''}" data-act="ecran" role="switch" aria-checked="${S.settings.ecranAllume!==false}"><span class="dot"></span><span><b>Garder l'écran allumé pendant la séance</b><br><span class="small muted">L'écran ne se met pas en veille entre deux séries. Il redevient normal à la fin de la séance.</span></span></button></section>`:''}
   <section class="card stack" id="jours-salle"><h2 class="title-m">Mes jours de salle</h2>
     ${Object.entries(WEEK_OPTS).map(([k,o])=>`<button class="opt ${plan===k?'on':''}" data-act="plan" data-v="${k}" role="radio" aria-checked="${plan===k}"><span class="dot"></span><span><b>${o.label}</b> + Five le vendredi<br><span class="small muted">${esc(o.note)}</span></span></button>`).join('')}
   </section>

@@ -163,13 +163,163 @@ function terminerSeance(fin){
   d.list.forEach(id=>{const s=(d.sets[id]||[]).filter(x=>x.done).map(x=>({w:num(x.w)||0,r:num(x.r)||0}));if(s.length){ex[id]=s;n+=s.length;if(EX[id].mode==='kg')s.forEach(x=>vol+=x.w*x.r);}});
   if(!n)return {erreur:'Valide au moins une série, ou annule la séance.'};
   const info=d.info||copieInfo(infoModele(d.type));
-  const ses={id:uid(),type:d.type,modele:copieInfo(info),date:dkey(new Date(d.start)),ts:d.start,dur:Math.max(1,Math.round(((fin||Date.now())-d.start)/60000)),ex};
+  Object.assign(ex,d.hors||{});
+  const r=d.reouverte,f=fin||Date.now();
+  const dur=r?Math.max(1,r.dur+Math.round((f-r.depuis)/60000)):Math.max(1,Math.round((f-d.start)/60000));
+  const ses={id:r?r.id:uid(),type:d.type,modele:copieInfo(info),date:dkey(new Date(d.start)),ts:d.start,dur,ex};
+  if(r&&r.modifiee)ses.modifiee=true;
   if(d.planId)ses.planId=d.planId;
   const rem={};Object.keys(ex).forEach(id=>{if(d.from&&d.from[id])rem[id]=d.from[id];});if(Object.keys(rem).length)ses.remplace=rem;
   const records=Object.keys(ex).filter(id=>{if(EX[id].mode!=='kg')return false;const prev=maxEver(id);const best=Math.max(...ex[id].map(x=>x.w));return prev>0&&best>prev;});
   S.sessions.push(ses);S.draft=null;
   Store.saveSession(ses);Store.saveDraft();
   return {ses,n,vol,records};
+}
+
+/* ---------- Remplacer ou ajouter un exercice (séance en cours ou modifiée) ---------- */
+function swapEx(oldId,newId){
+  const d=cur();if(!d)return;
+  if(d.list.includes(newId)){toast('Cet exercice est déjà dans la séance.');return false;}
+  d.from=d.from||{};d.rx=d.rx||{};
+  const i=d.list.indexOf(oldId);
+  /* En séance, les séries déjà faites sont gardées et l'alternative s'ajoute après.
+     En modifiant une séance terminée, « remplacer » corrige l'exercice : l'ancien disparaît. */
+  const hasDone=S.route!=='modif'&&(d.sets[oldId]||[]).some(x=>x.done);
+  /* Exercice d'origine du programme (si on remplace une alternative, on remonte à l'original). */
+  const orig=d.from[oldId]||oldId,base=rx(oldId);
+  if(hasDone)d.list.splice(i+1,0,newId);else{d.list.splice(i,1,newId);delete d.sets[oldId];delete d.from[oldId];delete d.rx[oldId];}
+  if(newId!==orig)d.from[newId]=orig;
+  /* Même type (charge, poids du corps…) : on garde séries, repos et fourchette de l'original. */
+  if(EX[newId].mode===EX[orig].mode)d.rx[newId]={sets:base.sets,min:base.min,max:base.max,rest:base.rest};
+  /* Jamais la charge de l'exercice remplacé : initSets ne lit que l'historique de newId. */
+  d.sets[newId]=initSets(newId);
+  Store.saveDraft();return true;
+}
+function addToSession(id){
+  const d=cur();if(!d)return;
+  if(d.list.includes(id)){toast('Déjà dans la séance.');return;}
+  const ti=d.list.indexOf('tapis');
+  if(ti!==-1&&id!=='tapis'&&ti===d.list.length-1)d.list.splice(ti,0,id);else d.list.push(id);
+  d.sets[id]=initSets(id);Store.saveDraft();
+}
+
+/* ---------- Fin de séance ---------- */
+const TROIS_HEURES=3*3600e3;
+/* Séries pas validées : « remplies » (charge et répétitions saisies) ou « vides ». */
+function serieRemplie(id,x){
+  if(!x.saisie)return false;   // valeurs proposées par Sporty, pas tapées : la série n'est pas « remplie »
+  const m=(EX[id]||{}).mode,r=num(x.r),w=num(x.w);
+  if(isNaN(r)||r<=0)return false;
+  return m==='kg'?!isNaN(w)&&String(x.w).trim()!=='':true;
+}
+function etatFin(d){
+  d=d||S.draft;const e={valides:0,remplies:0,vides:0};if(!d)return e;
+  d.list.forEach(id=>(d.sets[id]||[]).forEach(x=>{if(x.done)e.valides++;else if(serieRemplie(id,x))e.remplies++;else e.vides++;}));
+  return e;
+}
+function validerRemplies(d){
+  d=d||S.draft;let n=0;
+  d.list.forEach(id=>(d.sets[id]||[]).forEach(x=>{if(!x.done&&serieRemplie(id,x)){x.done=true;n++;}}));
+  Store.saveDraft();return n;
+}
+/* Plus de 3 heures depuis le début : on demandera l'heure de fin réelle. */
+function seanceTropLongue(now){
+  const d=S.draft;if(!d||d.reouverte)return false;
+  return (now||Date.now())-d.start>TROIS_HEURES;
+}
+/* Heure de fin proposée : début + durée estimée de la séance (1 h pour une séance libre). */
+function finEstimee(){
+  const d=S.draft,m=modeleParId(d.type);
+  return d.start+(m?dureeEstimee(m):60)*60000;
+}
+
+/* ---------- Modifier une séance terminée ---------- */
+/* Remet une séance enregistrée sous la forme « séance en cours » (séries cochées). */
+function draftDepuisSeance(ses){
+  const d={type:ses.type,info:copieInfo(infoSeance(ses)),start:ses.ts,list:[],sets:{},from:Object.assign({},ses.remplace||{}),rx:{},hors:{}};
+  if(ses.planId)d.planId=ses.planId;
+  Object.keys(ses.ex||{}).forEach(id=>{
+    if(!EX[id]){d.hors[id]=ses.ex[id];return;}   // exercice perso supprimé depuis : gardé tel quel
+    const m=EX[id].mode;d.list.push(id);
+    d.sets[id]=ses.ex[id].map(x=>({w:x.w||(m==='kg'&&x.w===0)?fmt(x.w):'',r:x.r!=null?fmt(x.r):'',done:true}));
+  });
+  return d;
+}
+const hhmm=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes());};
+function ouvrirModif(sesId,retour){
+  const ses=S.sessions.find(s=>s.id===sesId);if(!ses)return {erreur:'Séance introuvable.'};
+  const m={sesId,retour:retour||'historique'};
+  if(ses.type==='five'||!ses.ex)m.champs={date:ses.date,min:String(ses.min||60),note:ses.note||''},m.five=true;
+  else{m.d=draftDepuisSeance(ses);m.champs={date:ses.date,heure:hhmm(ses.ts),dur:String(ses.dur||60)};}
+  m.debut=etatModif(m);
+  S.modif=m;return {ok:true};
+}
+const etatModif=m=>JSON.stringify({c:m.champs,d:m.d?{list:m.d.list,sets:m.d.sets,from:m.d.from}:null});
+const modifSale=()=>!!S.modif&&etatModif(S.modif)!==S.modif.debut;
+/* Enregistre les changements. Tout le reste (records, courbes, suggestions, semaine) est recalculé
+   à partir des séances : il suffit de mettre la séance à jour. */
+function enregistrerModif(){
+  const m=S.modif;if(!m)return {erreur:'Rien à enregistrer.'};
+  const i=S.sessions.findIndex(s=>s.id===m.sesId);if(i<0)return {erreur:'Séance introuvable.'};
+  const ses=clone(S.sessions[i]),c=m.champs;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(c.date||'')||isNaN(pkey(c.date)))return {erreur:'Choisis une date.'};
+  if(c.date>dkey())return {erreur:'La date ne peut pas être dans le futur.'};
+  if(m.five){
+    const min=Math.round(num(c.min));if(!(min>=10&&min<=300))return {erreur:'Indique une durée entre 10 et 300 minutes.'};
+    ses.date=c.date;ses.ts=pkey(c.date).getTime()+20*3600e3;ses.min=min;
+    if(String(c.note||'').trim())ses.note=String(c.note).trim();else delete ses.note;
+  }else{
+    const h=String(c.heure||'').match(/^(\d{1,2}):(\d{2})$/);if(!h||+h[1]>23||+h[2]>59)return {erreur:'Indique l\'heure de début, par exemple 19:00.'};
+    const dur=Math.round(num(c.dur));if(!(dur>=1&&dur<=600))return {erreur:'Indique une durée entre 1 et 600 minutes.'};
+    const d=m.d,ex={};
+    d.list.forEach(id=>{const s=(d.sets[id]||[]).filter(x=>x.done).map(x=>({w:num(x.w)||0,r:num(x.r)||0}));if(s.length)ex[id]=s;});
+    Object.assign(ex,d.hors||{});
+    if(!Object.keys(ex).length)return {erreur:'Garde au moins une série validée, ou supprime la séance.'};
+    ses.ex=ex;ses.date=c.date;ses.ts=pkey(c.date).getTime()+(+h[1])*3600e3+(+h[2])*60e3;ses.dur=dur;
+    const rem={};Object.keys(ex).forEach(id=>{if(d.from&&d.from[id])rem[id]=d.from[id];});
+    if(Object.keys(rem).length)ses.remplace=rem;else delete ses.remplace;
+  }
+  ses.modifiee=true;
+  S.sessions[i]=ses;Store.saveSession(ses);S.modif=null;
+  return {ok:true,ses};
+}
+
+/* ---------- Rouvrir une séance terminée (3 heures) ---------- */
+const finSeance=s=>(s.ts||0)+(s.dur||0)*60000;
+function peutRouvrir(s,now){return !!s&&!!s.ex&&s.type!=='five'&&(now||Date.now())-finSeance(s)<=TROIS_HEURES;}
+function rouvrirSeance(id,now){
+  now=now||Date.now();
+  const ses=S.sessions.find(s=>s.id===id);if(!ses)return {erreur:'Séance introuvable.'};
+  if(S.draft)return {erreur:'Une séance est déjà en cours : termine-la ou annule-la avant d\'en rouvrir une autre.'};
+  if(!ses.ex||ses.type==='five')return {erreur:'Seule une séance de salle peut être rouverte.'};
+  if(now-finSeance(ses)>TROIS_HEURES)return {erreur:'Une séance ne peut être rouverte que pendant 3 heures après sa fin. Tu peux toujours la modifier.'};
+  const d=draftDepuisSeance(ses);
+  d.reouverte={id:ses.id,dur:ses.dur||0,depuis:now,original:clone(ses)};
+  S.draft=d;
+  /* Le programme de la séance revient en entier : exercices pas encore faits (dans l'ordre), tapis. */
+  const m=modeleParId(ses.type);
+  if(m){
+    const remplaces=new Set(Object.values(d.from||{}));
+    m.ex.forEach(l=>{if(EX[l.id]&&!d.rx[l.id])d.rx[l.id]={sets:l.sets,min:l.min,max:l.max,rest:l.rest};});
+    const ordre=m.ex.map(l=>l.id).filter(id=>EX[id]&&!remplaces.has(id));
+    if(m.tapis&&!ordre.includes('tapis'))ordre.push('tapis');
+    const faits=d.list.slice();
+    const liste=[];ordre.forEach(id=>{liste.push(id);faits.filter(f=>d.from[f]===id).forEach(f=>liste.push(f));});
+    faits.forEach(f=>{if(!liste.includes(f))liste.splice(liste.includes('tapis')?liste.indexOf('tapis'):liste.length,0,f);});
+    d.list=liste;
+    liste.forEach(id=>{if(!d.sets[id])d.sets[id]=initSets(id);});
+  }
+  if(ses.modifiee)d.reouverte.modifiee=true;
+  S.draft=d;S.sessions=S.sessions.filter(s=>s.id!==id);
+  Store.deleteSession(id);Store.saveDraft();
+  return {ok:true};
+}
+
+/* Annule la séance en cours. Une séance rouverte retrouve son état d'avant. */
+function annulerSeance(){
+  const d=S.draft;if(!d)return {ok:true};
+  if(d.reouverte&&d.reouverte.original){const o=d.reouverte.original;S.sessions.push(o);Store.saveSession(o);}
+  S.draft=null;Store.saveDraft();return {ok:true,restauree:!!(d.reouverte&&d.reouverte.original)};
 }
 
 /* ---------- Séances prévues à une date ---------- */

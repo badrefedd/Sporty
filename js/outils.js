@@ -83,18 +83,39 @@ let actx=null;
 function unlockAudio(){try{if(!actx){const C=window.AudioContext||window.webkitAudioContext;if(C)actx=new C();}if(actx&&actx.state==='suspended')actx.resume();}catch(e){}}
 function beep(){
   try{if(actx){const t0=actx.currentTime;[0,.28,.56].forEach((t,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=i===2?1320:880;g.gain.setValueAtTime(.0001,t0+t);g.gain.exponentialRampToValueAtTime(.35,t0+t+.02);g.gain.exponentialRampToValueAtTime(.0001,t0+t+.2);o.connect(g);g.connect(actx.destination);o.start(t0+t);o.stop(t0+t+.22);});}}catch(e){}
-  try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
 }
 
+/* ---------- Écran allumé pendant la séance (Screen Wake Lock) ---------- */
+const Ecran={lock:null,
+  get dispo(){return typeof navigator!=='undefined'&&'wakeLock' in navigator;},
+  async garder(){
+    if(!this.dispo||S.settings.ecranAllume===false||!S.draft||document.visibilityState!=='visible'||this.lock)return;
+    try{this.lock=await navigator.wakeLock.request('screen');this.lock.addEventListener('release',()=>{this.lock=null;});}catch(e){this.lock=null;}
+  },
+  liberer(){if(this.lock){const l=this.lock;this.lock=null;l.release().catch(()=>{});}}
+};
+
 /* ---------- Rest timer ---------- */
+/* Le repos en cours est gardé dans la séance : si l'iPhone recharge l'appli pendant le repos,
+   le minuteur reprend ; si le repos s'est terminé pendant l'absence, il affiche directement « Go ! ». */
 const Timer={end:0,dur:0,iv:null,label:'',over:false,
-  start(sec,label){this.dur=sec;this.end=Date.now()+sec*1000;this.label=label||'Repos';this.over=false;clearInterval(this.iv);this.iv=setInterval(()=>this.tick(),250);this.tick();},
-  add(s){if(this.over){this.start(s,this.label);return;}this.end+=s*1000;this.dur+=s;this.tick();},
-  stop(){clearInterval(this.iv);this.iv=null;$('#timer').hidden=true;document.body.classList.remove('timer-on');},
+  start(sec,label){this.dur=sec;this.end=Date.now()+sec*1000;this.label=label||'Repos';this.over=false;this.garder();clearInterval(this.iv);this.iv=setInterval(()=>this.tick(),250);this.tick();},
+  garder(){if(S.draft){S.draft.repos={end:this.end,dur:this.dur,label:this.label};Store.saveDraft();}},
+  reprendre(){
+    const r=S.draft&&S.draft.repos;if(!r)return;
+    const now=Date.now();
+    if(r.end>now){this.dur=r.dur;this.end=r.end;this.label=r.label;this.over=false;clearInterval(this.iv);this.iv=setInterval(()=>this.tick(),250);this.tick();}
+    else if(now-r.end<5*60e3){this.dur=r.dur;this.end=r.end;this.label=r.label;this.goSansBip();}
+    else{delete S.draft.repos;saveDraftSoon();}
+  },
+  /* repos fini pendant l'absence : « Go ! » tout de suite, sans compteur négatif */
+  goSansBip(){this.over=true;clearInterval(this.iv);this.iv=setInterval(()=>this.tick(),250);this.tick();clearTimeout(this.fin);this.fin=setTimeout(()=>{if(this.over)this.stop();},8000);},
+  add(s){if(this.over){this.start(s,this.label);return;}this.end+=s*1000;this.dur+=s;this.garder();this.tick();},
+  stop(){clearInterval(this.iv);this.iv=null;clearTimeout(this.fin);this.over=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');if(S.draft&&S.draft.repos){delete S.draft.repos;saveDraftSoon();}},
   tick(){
     const el=$('#timer');el.hidden=false;document.body.classList.add('timer-on');
-    const left=Math.ceil((this.end-Date.now())/1000);
-    if(left<=0&&!this.over){this.over=true;beep();setTimeout(()=>{if(this.over)this.stop();},8000);}
+    const left=Math.max(0,Math.ceil((this.end-Date.now())/1000));
+    if(left<=0&&!this.over){this.over=true;const enRetard=Date.now()-this.end>2000;if(!enRetard)beep();clearTimeout(this.fin);this.fin=setTimeout(()=>{if(this.over)this.stop();},8000);}
     el.classList.toggle('over',this.over);
     $('#timerT').textContent=this.over?'Go !':`${Math.floor(left/60)}:${pad(left%60)}`;
     $('#timerL').innerHTML=this.over?'Série suivante':`Repos<br>${esc(this.label)}`;

@@ -10,8 +10,12 @@ function fieldsFor(id){
 }
 /* Prescription effective : en séance, une alternative garde séries, repos et fourchette
    de l'exercice qu'elle remplace (S.draft.rx). */
-function rx(id){return Object.assign({},EX[id],(S.draft&&S.draft.rx&&S.draft.rx[id])||{});}
-const remplaceDe=id=>S.draft&&S.draft.from?S.draft.from[id]||null:null;
+/* Séance affichée : celle qu'on modifie (écran « Modifier ») ou la séance en cours. */
+const cur=()=>S.route==='modif'&&S.modif&&S.modif.d?S.modif.d:S.draft;
+function rx(id){const d=cur();return Object.assign({},EX[id],(d&&d.rx&&d.rx[id])||{});}
+const remplaceDe=id=>{const d=cur();return d&&d.from?d.from[id]||null:null;};
+/* « 1 série », « 2 séries » (0 reste au singulier). */
+const nb=(n,sing,plur)=>`${n} ${Math.abs(n)>1?plur:sing}`;
 /* « Chest press (à la place de Développé couché) » */
 function exLabel(id,ses){
   const n=EX[id]?EX[id].name:id,o=ses&&ses.remplace&&ses.remplace[id];

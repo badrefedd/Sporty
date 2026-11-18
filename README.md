@@ -56,6 +56,14 @@ garderont l'ancienne version en mémoire.
   Pour qu'une autre discussion Claude écrive une séance, lui donner `EXERCICES.md`.
 - « Coller une séance » (onglet Séance ou Mes séances) relit ce code.
 
+## Fin de séance et corrections
+
+- Un seul bouton « Terminer la séance » ; s'il reste des séries, Sporty propose de valider celles qui sont remplies,
+  de terminer sans elles ou de continuer. Au-delà de 3 heures, il demande l'heure de fin réelle.
+- « Modifier » (historique, journée) corrige une séance terminée ou un Five. « Rouvrir la séance » la remet en cours
+  pendant 3 heures après la fin.
+- Mise à jour : une nouvelle version attend ; le bandeau « Nouvelle version disponible » la propose, jamais pendant une séance.
+
 ## Tests
 
 ```bash
@@ -68,7 +76,8 @@ Vérifie les alternatives et les séances (création, refus, historique, sauvega
 npm run e2e
 ```
 
-Rejoue les parcours dans un iPhone simulé (nécessite Playwright).
+Rejoue les parcours dans un iPhone simulé (nécessite Playwright) : séances, illustrations, V1.1 (fin de séance,
+modification, rouvrir, minuteur, bandeau de mise à jour, zones à toucher).
 
 ## Illustrations
 

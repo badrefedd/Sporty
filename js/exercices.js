@@ -222,6 +222,6 @@ const DAYS_LONG=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanch
 const MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const MONTHS_LONG=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const TABS=['semaine','seance','exos','historique','poids','reglages'];
-const ROUTES=TABS.concat(['mois','seances','seance-edit']);
+const ROUTES=TABS.concat(['mois','seances','seance-edit','modif']);
 const STEP_GOAL=10000;
 

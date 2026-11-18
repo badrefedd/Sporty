@@ -1,19 +1,36 @@
 'use strict';
 /* ---------- Render ---------- */
 function renderTabs(){
-  const active=S.route==='mois'?'semaine':['seances','seance-edit'].includes(S.route)?'reglages':S.route;
+  const active=S.route==='mois'?'semaine':['seances','seance-edit'].includes(S.route)?'reglages':S.route==='modif'?'historique':S.route;
   $('#tabs').innerHTML=TABS.map(r=>`<a href="#${r}" class="${active===r?'on':''}" ${active===r?'aria-current="page"':''}>${I['tab_'+r]}<span>${TAB_LABEL[r]}</span></a>`).join('');
 }
+/* ---------- Mise à jour de l'appli ---------- */
+/* Une nouvelle version téléchargée attend ; le bandeau la propose, jamais pendant une séance. */
+const Maj={reg:null,dispo:false,demandee:false,recharge:false,
+  verifier(){this.dispo=!!(this.reg&&this.reg.waiting&&navigator.serviceWorker.controller);this.afficher();},
+  afficher(){const el=$('#maj');if(el)el.hidden=!(this.dispo&&!S.draft);},
+  lancer(){const w=this.reg&&this.reg.waiting;if(!w){location.reload();return;}this.demandee=true;w.postMessage('mettre-a-jour');}
+};
 function render(){
   const v=$('#view');
-  const map={semaine:viewSemaine,seance:viewSeance,exos:viewExos,historique:viewHistorique,poids:viewPoids,reglages:viewReglages,mois:viewCalendrier,seances:viewSeances,'seance-edit':viewEditeur};
+  const map={semaine:viewSemaine,seance:viewSeance,exos:viewExos,historique:viewHistorique,poids:viewPoids,reglages:viewReglages,mois:viewCalendrier,seances:viewSeances,'seance-edit':viewEditeur,modif:viewModif};
   v.innerHTML=(map[S.route]||viewSemaine)();
-  renderTabs();applyTheme();
+  renderTabs();applyTheme();Maj.afficher();
 }
 function handleHash(){
   const h=decodeURIComponent(location.hash.slice(1)).replace(/[\s  ]/g,'');
   if(h==='calendrier'){location.replace('#mois');return;}
   if(h==='programme'){location.replace('#seances');return;}
+  /* quitter l'écran « Modifier » avec des changements non enregistrés : confirmation */
+  if(S.route==='modif'&&h!=='modif'&&S.modif){
+    if(modifSale()&&!S.modifQuitte){
+      const cible=h;history.replaceState(null,'','#modif');
+      confirmBox('Quitter sans enregistrer ?','Tes modifications de cette séance seront perdues.','Quitter sans enregistrer',()=>{S.modifQuitte=true;S.modif=null;location.hash=cible||'historique';},true);
+      return;
+    }
+    S.modif=null;
+  }
+  S.modifQuitte=false;
   const prev=S.route;
   S.route=ROUTES.includes(h)?h:'semaine';
   render();
@@ -47,7 +64,7 @@ document.addEventListener('click',e=>{
     case 'start':unlockAudio();closeModal();startSession(el.dataset.type,el.dataset.plan?{planId:el.dataset.plan}:{});break;
     case 'toggleset':{
       unlockAudio();
-      const i=+el.dataset.i,set=S.draft.sets[id][i],ex=rx(id);
+      const D=cur(),i=+el.dataset.i,set=D.sets[id][i],ex=rx(id);
       if(!set.done){
         const F=fieldsFor(id),main=F.find(f=>f.main),other=F.find(f=>!f.main);
         const mv=num(set[main.k]);
@@ -55,22 +72,35 @@ document.addEventListener('click',e=>{
         if(ex.mode==='kg'){const w=num(set.w);if(isNaN(w)||w<0){toast('Indique la charge en kg (0 si sans charge).');$(`#w-${id}-${i}`).focus();return;}}
         else if(set[other.k]!==''&&isNaN(num(set[other.k]))){toast('Valeur non valide.');return;}
         set.done=true;
-        const next=S.draft.sets[id].findIndex(x=>!x.done);
-        if(next!==-1){const nx=S.draft.sets[id][next];if(nx.w===''||nx.w==null)nx.w=set.w;}
-        const isLast=S.draft.sets[id].every(x=>x.done);
-        if(ex.rest)Timer.start(ex.rest,isLast?'Exercice suivant':ex.name);
+        const next=D.sets[id].findIndex(x=>!x.done);
+        if(next!==-1){const nx=D.sets[id][next];if(nx.w===''||nx.w==null)nx.w=set.w;}
+        const isLast=D.sets[id].every(x=>x.done);
+        if(ex.rest&&S.route!=='modif')Timer.start(ex.rest,isLast?'Exercice suivant':ex.name);
       }else set.done=false;
       Store.saveDraft();render();break;}
-    case 'addset':{const arr=S.draft.sets[id],l=arr[arr.length-1]||{w:'',r:String(rx(id).min)};arr.push({w:l.w,r:l.r,done:false});Store.saveDraft();render();break;}
-    case 'rmset':{const arr=S.draft.sets[id];if(arr.length>1){arr.pop();Store.saveDraft();render();}break;}
+    case 'addset':{const arr=cur().sets[id],l=arr[arr.length-1]||{w:'',r:String(rx(id).min)};arr.push({w:l.w,r:l.r,done:false});Store.saveDraft();render();break;}
+    case 'rmset':{const arr=cur().sets[id];if(arr.length>1){arr.pop();Store.saveDraft();render();}break;}
     case 'exinfo':if(S.route==='exos'&&S.draft&&!S.draft.list.includes(id)&&el.classList.contains('bank-row')){exInfo(id);}else exInfo(id);break;
     case 'close':closeModal();break;
     case 'confirmok':{const cb=confirmCb;confirmCb=null;closeModal();if(cb)cb();break;}
     case 'finish':finishSession();break;
-    case 'stop':{const done=S.draft.list.reduce((n,x)=>n+(S.draft.sets[x]||[]).filter(s=>s.done).length,0);
-      if(!done){confirmBox('Arrêter la séance ?','Aucune série n\'est validée : la séance sera annulée.','Annuler la séance',()=>{S.draft=null;Timer.stop();Store.saveDraft();location.hash='semaine';},true);}
-      else confirmBox('Arrêter la séance ?',`Les ${done} séries validées sont enregistrées, les autres sont ignorées.`,'Arrêter et enregistrer',finishSession);break;}
-    case 'abandon':confirmBox('Annuler la séance ?','Tout ce que tu as noté pendant cette séance sera effacé. Rien ne sera enregistré.','Annuler la séance',()=>{S.draft=null;Timer.stop();Store.saveDraft();location.hash='semaine';toast('Séance annulée');},true);break;
+    case 'maj':Maj.lancer();break;
+    case 'ecran':S.settings.ecranAllume=S.settings.ecranAllume===false;Store.saveSettings();if(S.settings.ecranAllume===false)Ecran.liberer();else Ecran.garder();render();break;
+    case 'abandon':{const re=S.draft&&S.draft.reouverte;
+      confirmBox('Annuler la séance ?',re?'Tes ajouts depuis la réouverture seront effacés. La séance revient telle qu\'elle était dans ton historique.':'Tout ce que tu as noté pendant cette séance sera effacé. Rien ne sera enregistré.','Annuler la séance',()=>{annulerSeance();Timer.stop();Ecran.liberer();location.hash='semaine';toast(re?'Séance remise telle qu\'elle était':'Séance annulée');},true);break;}
+    /* fin de séance */
+    case 'finvalider':validerRemplies();closeModal();finishSession('series');break;
+    case 'finsans':closeModal();finishSession('series');break;
+    case 'finheure':{const f=finDepuisHeure($('#finheure').value);const er=$('#finerr');
+      if(!f){er.textContent='Indique une heure de fin passée, après le début de la séance.';er.hidden=false;return;}
+      S.finChoisie=f;closeModal();finishSession('duree');break;}
+    /* modifier ou rouvrir une séance terminée */
+    case 'modifier':{const r=ouvrirModif(el.dataset.id,el.dataset.retour||S.route);if(r.erreur){toast(r.erreur);return;}closeModal();location.hash='modif';window.scrollTo(0,0);break;}
+    case 'modifsave':{S.modifRetour=S.modif&&S.modif.retour;const r=enregistrerModif();
+      if(r.erreur){const e=$('#moderr');if(e){e.textContent=r.erreur;e.hidden=false;e.scrollIntoView({block:'center'});}toast(r.erreur);return;}
+      const ret=S.modifRetour||'historique';toast('Séance modifiée');location.hash=ret==='modif'?'historique':ret;break;}
+    case 'modifannuler':location.hash=(S.modif&&S.modif.retour&&S.modif.retour!=='modif')?S.modif.retour:'historique';break;
+    case 'rouvrir':{const r=rouvrirSeance(el.dataset.id);if(r.erreur){toast(r.erreur);return;}closeModal();unlockAudio();Ecran.garder();location.hash='seance';toast('Séance rouverte : tes séries validées sont cochées');break;}
     case 'timeradd':Timer.add(15);break;
     case 'timerstop':Timer.stop();break;
     case 'five':fiveModal();break;
@@ -175,7 +205,7 @@ document.addEventListener('click',e=>{
       if(m==='A'||m==='B'||m==='five'){location.hash='reglages';setTimeout(()=>{const c=$('#jours-salle');if(c)c.scrollIntoView({block:'start'});},120);}
       else{const mo=modeleParId(m);if(mo)ouvrirEditeur(mo,'semaine');}break;}
     case 'semdefaut':confirmBox('Remettre la semaine par défaut ?','Les séances déplacées ou retirées cette semaine reviennent à leurs jours habituels. Les séances placées à une date ne bougent pas.','Remettre par défaut',()=>{remettreSemaine(weekStart());render();toast('Semaine remise par défaut');});break;
-    case 'addtosession':addToSession(id);closeModal();toast(`${EX[id].name} ajouté à la séance`);location.hash='seance';setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},120);break;
+    case 'addtosession':addToSession(id);closeModal();toast(`${EX[id].name} ajouté à la séance`);if(S.route==='modif')render();else location.hash='seance';setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},120);break;
     case 'pickalt':openPicker({mode:'addalt',for:id});break;
     case 'pickswap':openPicker({mode:'swap',for:id});break;
     case 'addex':openPicker({mode:'add'});break;
@@ -188,10 +218,10 @@ document.addEventListener('click',e=>{
       else if(p.mode==='impfix'){const l=S.imp.lignes[p.i];Object.assign(l,{ok:true,id,ligne:ligneDepuisCode(id,l.raw)});apercuCollage();}
       else{addToSession(id);closeModal();render();setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}
       break;}
-    case 'swapto':{const from=el.dataset.from;if(swapEx(from,id)!==false){closeModal();if(S.route!=='seance')location.hash='seance';else render();toast(`${EX[id].name} à la place de ${EX[from].name}`);setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}break;}
+    case 'swapto':{const from=el.dataset.from;if(swapEx(from,id)!==false){closeModal();if(S.route!=='seance'&&S.route!=='modif')location.hash='seance';else render();toast(`${EX[id].name} à la place de ${EX[from].name}`);setTimeout(()=>{const c=$('#ex-'+id);if(c)c.scrollIntoView({block:'center'});},80);}break;}
     case 'rmalt':removeAlt(el.dataset.from,id);exInfo(el.dataset.from);break;
     case 'altsheet':altSheet(id);break;
-    case 'rmex':{const d=S.draft;const done=(d.sets[id]||[]).some(x=>x.done);
+    case 'rmex':{const d=cur();const done=(d.sets[id]||[]).some(x=>x.done);
       const go=()=>{d.list=d.list.filter(x=>x!==id);delete d.sets[id];if(d.from)delete d.from[id];if(d.rx)delete d.rx[id];Store.saveDraft();closeModal();render();toast(`${EX[id].name} retiré de la séance`);};
       if(done)confirmBox('Retirer cet exercice ?','Les séries déjà validées pour cet exercice seront perdues.','Retirer',go,true);else go();break;}
     case 'savevid':{const sid=$('#vidsel').value,v=$('#vidurl').value.trim();S.settings.videos=Object.assign({},S.settings.videos);
@@ -205,9 +235,10 @@ function copyText(txt,ok){
 }
 document.addEventListener('input',e=>{
   const el=e.target;
-  if(el.dataset.f&&S.draft){const s=S.draft.sets[el.dataset.ex][+el.dataset.i];s[el.dataset.f]=el.value;saveDraftSoon();}
+  if(el.dataset.f&&cur()){const s=cur().sets[el.dataset.ex][+el.dataset.i];s[el.dataset.f]=el.value;s.saisie=true;if(S.route!=='modif')saveDraftSoon();}
   else if(el.id==='bankq'){S.bankQ=el.value;$('#bankList').innerHTML=bankListHTML();}
   else if(el.id==='pickq'&&picker){picker.q=el.value;$('#pickList').innerHTML=pickListHTML();}
+  else if(S.modif&&/^m-(date|heure|dur|min|note)$/.test(el.id)){S.modif.champs[el.id.slice(2)]=el.value;}
   else if(S.edit&&el.dataset.edf){S.edit.m.ex[+el.dataset.edi][el.dataset.edf]=el.value;}
   else if(S.edit&&el.id==='ed-nom')S.edit.m.nom=el.value;
   else if(S.edit&&el.id==='ed-badge')S.edit.m.badge=el.value.toUpperCase();
@@ -248,11 +279,20 @@ window.addEventListener('hashchange',handleHash);
   applyTheme();
   handleHash();
   requestAnimationFrame(animate);
+  /* séance en cours : repos et écran allumé */
+  Timer.reprendre();Ecran.garder();
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(Timer.iv)Timer.tick();else Timer.reprendre();Ecran.garder();}});
   /* animations : seulement celles visibles à l'écran */
   surveillerIllus();new MutationObserver(()=>surveillerIllus()).observe(document.body,{childList:true,subtree:true});
   /* Mode hors connexion : le « service worker » garde une copie de l'appli sur le téléphone. */
   if('serviceWorker' in navigator&&location.protocol!=='file:'){
-    navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW',e));
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      Maj.reg=reg;Maj.verifier();
+      reg.addEventListener('updatefound',()=>{const w=reg.installing;if(w)w.addEventListener('statechange',()=>{if(w.state==='installed')Maj.verifier();});});
+      /* au retour dans l'appli, on regarde s'il y a une nouvelle version */
+      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
+    }).catch(e=>console.warn('SW',e));
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(Maj.demandee&&!Maj.recharge){Maj.recharge=true;location.reload();}});
     navigator.serviceWorker.ready.then(()=>garderImagesSeances());
   }
 })();

@@ -118,7 +118,8 @@ function daySheet(k){
   openModal(`<div class="sheet-head"><div><div class="eyebrow">Journée</div><h2 class="title-l" style="text-transform:capitalize">${fmtDate(k)}</h2></div><button class="x" data-act="close" aria-label="Fermer">${I.x}</button></div>
     ${ses.map(s=>{const info=infoSeance(s);return `<div class="card" style="box-shadow:none;padding:12px"><div class="row">${badgeHTML(info,'fait')}<b>${esc(info.nom)}</b><span class="small muted">${s.type==='five'?(s.min||60)+' min':(s.dur||'?')+' min'}</span></div>
       ${s.ex?`<div class="hist-detail" style="border:0;padding-top:8px">${Object.keys(s.ex).map(id=>`<div class="l"><span>${esc(exLabel(id,s))}</span><b class="num">${setsStr(id,s.ex[id])}</b></div>`).join('')}${s.tapis?`<div class="l"><span>Tapis</span><b class="num">${s.tapis.min} min · ${fmt(s.tapis.inc)} %</b></div>`:''}</div>`:''}
-      ${s.note?`<div class="small muted">${esc(s.note)}</div>`:''}</div>`;}).join('')}
+      ${s.note?`<div class="small muted">${esc(s.note)}</div>`:''}
+      <div class="row" style="margin-top:8px">${s.modifiee?'<span class="pill">modifiée</span>':''}<div class="spacer"></div><button class="btn sm ghost" data-act="modifier" data-id="${s.id}" data-retour="${S.route}">${I.edit} Modifier</button></div></div>`;}).join('')}
     ${prevuHTML?`<div class="stack" style="gap:8px"><h3 class="title-m">Prévu</h3>${prevuHTML}</div>`:''}
     ${!ses.length&&!prevuHTML?`<p class="muted" style="margin:0">${future?'Rien de prévu ce jour-là.':'Pas de séance ce jour-là.'}</p>`:''}
     <button class="btn ghost block" data-act="prevoir" data-date="${k}">${I.plus} Prévoir une séance</button>

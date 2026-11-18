@@ -2,7 +2,7 @@
    instantanément, même sans réseau à la salle.
    À chaque mise à jour de l'appli, change VERSION : le téléphone téléchargera
    la nouvelle version en arrière-plan et l'utilisera à la prochaine ouverture. */
-const VERSION='sporty-v3.5.0';
+const VERSION='sporty-v3.6.0';
 const FICHIERS=[
   './','./index.html','./manifest.webmanifest','./css/styles.css',
   './js/outils.js','./js/exercices.js','./js/alternatives.js','./js/stockage.js','./js/sauvegarde.js',
@@ -28,10 +28,12 @@ const FICHIERS=[
   './fonts/BarlowCondensed-800i-latin.woff2',
 ];
 self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(VERSION).then(c=>c.addAll(FICHIERS)).then(()=>self.skipWaiting()));
+  /* La nouvelle version attend : l'appli affiche « Nouvelle version disponible » et c'est toi qui lances la mise à jour. */
+  e.waitUntil(caches.open(VERSION).then(c=>c.addAll(FICHIERS)));
 });
 /* Les images d'exercices ont leur propre réserve, gardée d'une version à l'autre. */
 const IMAGES='sporty-images';
+self.addEventListener('message',e=>{if(e.data==='mettre-a-jour')self.skipWaiting();});
 self.addEventListener('activate',e=>{
   e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==VERSION&&k!==IMAGES).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });

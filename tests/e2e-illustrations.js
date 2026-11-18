@@ -17,6 +17,8 @@ async function page(opts={}){
   return p;
 }
 const p1=p=>p.evaluate(()=>{const el=document.querySelector('#sheet .illu');return {cls:el.className,etat:el.querySelector('.p1')?getComputedStyle(el.querySelector('.p1')).animationPlayState:null};});
+/* « Terminer la séance » : s'il reste des séries non validées, on choisit « Terminer sans elles ». */
+async function terminer(p){await p.click('[data-act="finish"]');await p.waitForTimeout(150);const b=await p.$('#sheet [data-act="finsans"]');if(b)await b.click();await p.waitForSelector('#sheet h2:has-text("terminée")');}
 const etapes=[];const etape=(nom,fn)=>etapes.push({nom,fn});
 
 etape('L\'animation tourne, se met en pause au toucher, et hors écran',async()=>{
@@ -78,7 +80,7 @@ etape('Séance A complète sans réseau, avec les animations',async()=>{
   }
   await p.evaluate(()=>exInfo('presse'));await p.waitForTimeout(300);
   assert.ok(await p.evaluate(()=>[...document.querySelectorAll('#sheet .illu img')].every(i=>i.complete&&i.naturalWidth>0)));
-  await p.evaluate(()=>closeModal());await p.click('[data-act="finish"]');await p.waitForSelector('#sheet h2');
+  await p.evaluate(()=>closeModal());await terminer(p);await p.waitForSelector('#sheet h2');
   assert.match(await p.textContent('#sheet h2'),/Séance A terminée/);
   assert.deepEqual(p.erreurs.filter(e=>!/net::ERR_INTERNET_DISCONNECTED|Failed to load resource/.test(e)),[]);await p.context().close();
 });

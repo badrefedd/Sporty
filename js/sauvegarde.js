@@ -164,7 +164,7 @@ async function appliquerImport(remplacer){
     toast('Import impossible : rien n\'a été modifié.');return;
   }
   importEnAttente=null;buildEx();closeModal();applyTheme();render();
-  toast(`Import terminé : ${r.seances.length} séances, ${r.pesees.length} pesées`);
+  toast(`Import terminé : ${nb(r.seances.length,'séance','séances')}, ${nb(r.pesees.length,'pesée','pesées')}`);
 }
 
 /* ---------- Rappel discret ---------- */

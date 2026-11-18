@@ -11,6 +11,8 @@ const serveur=http.createServer((req,res)=>{
   if(!f.startsWith(RACINE)||!fs.existsSync(f)){res.writeHead(404);return res.end();}
   res.writeHead(200,{'Content-Type':TYPES[path.extname(f)]||'application/octet-stream'});fs.createReadStream(f).pipe(res);
 });
+/* « Terminer la séance » : s'il reste des séries non validées, on choisit « Terminer sans elles ». */
+async function terminer(p){await p.click('[data-act="finish"]');await p.waitForTimeout(150);const b=await p.$('#sheet [data-act="finsans"]');if(b)await b.click();await p.waitForSelector('#sheet h2:has-text("terminée")');}
 const etapes=[];const etape=(nom,fn)=>etapes.push({nom,fn});
 
 etape('Créer une séance perso dans l\'éditeur (refus puis enregistrement)',async p=>{
@@ -39,7 +41,7 @@ etape('Démarrer la séance perso depuis l\'onglet Séance, la terminer, voir l\
   assert.match(await p.textContent('.session-head'),/Bras/);
   assert.equal(await p.$$eval('#ex-curl_ez .set',a=>a.length),4);
   await p.fill('#w-curl_ez-0','20');await p.click('#ex-curl_ez [data-act="toggleset"][data-i="0"]');await p.click('[data-act="timerstop"]');
-  await p.click('[data-act="finish"]');await p.waitForSelector('#sheet h2');
+  await terminer(p);await p.waitForSelector('#sheet h2');
   assert.match(await p.textContent('#sheet h2'),/Bras terminée/);
   await p.click('#sheet [data-act="close"]');
   await p.goto(U+'#historique');await p.waitForSelector('.hist-item');
@@ -56,7 +58,7 @@ etape('Séance libre → « Enregistrer comme séance perso »',async p=>{
   await p.fill('#pickq','rowing assis à la poulie');await p.click('#pickList [data-act="pick"]');await p.waitForSelector('#ex-row');
   await p.fill('#w-row-0','40');await p.click('#ex-row [data-act="toggleset"][data-i="0"]');await p.click('[data-act="timerstop"]');
   await p.fill('#w-row-1','40');await p.click('#ex-row [data-act="toggleset"][data-i="1"]');await p.click('[data-act="timerstop"]');
-  await p.click('[data-act="finish"]');await p.click('[data-act="saveasperso"]');await p.waitForSelector('#ed-nom');
+  await terminer(p);await p.click('[data-act="saveasperso"]');await p.waitForSelector('#ed-nom');
   assert.equal(await p.inputValue('[data-edi="0"][data-edf="sets"]'),'2');
   await p.fill('#ed-nom','Dos rapide');await p.click('[data-act="edsave"]');await p.waitForSelector('.mseance');
   assert.ok(await p.evaluate(()=>S.modeles.some(m=>m.nom==='Dos rapide')));
